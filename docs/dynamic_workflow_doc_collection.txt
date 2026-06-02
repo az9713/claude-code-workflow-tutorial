@@ -1,3 +1,0 @@
-Read https://www.anthropic.com/news/claude-opus-4-8,
-  https://claude.com/blog/introducing-dynamic-workflows-in-claude-code,
-  https://code.claude.com/docs/en/workflows
