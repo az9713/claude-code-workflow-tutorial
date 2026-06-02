@@ -1,5 +1,7 @@
 # Claude Code Workflow Tutorial
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Open%20Tutorial-34D399?style=for-the-badge)](https://az9713.github.io/claude-code-workflow-tutorial/tutorial.html)
+
 > **A study in agentic development:** this entire project — the research, the interactive guide, and the video — was built inside a single Claude Code session using the primitives it teaches.
 
 ## What's in this repo
