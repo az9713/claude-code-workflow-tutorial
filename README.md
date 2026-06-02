@@ -37,8 +37,7 @@ python -m http.server 8765
 
 ## The Video
 
-<!-- VIDEO_URL_PLACEHOLDER -->
-> *Video URL to be added — see `video/renders/video_2026-06-02_21-07-46.mp4` locally in the meantime.*
+<video src="https://github.com/user-attachments/assets/87d891cf-b61b-4db4-b6a4-9702f52f54cb" controls width="100%"></video>
 
 **2:06 · 1920×1080 · 30fps · 7.3 MB**
 
