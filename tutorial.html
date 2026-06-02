@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code · Orchestration Primitives — When to Use What</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { background: #080810; color: #e2e8f0; font-family: system-ui, -apple-system, sans-serif; }
+
+  /* ── topology node animations ── */
+  @keyframes popIn  { from { opacity:0; transform:scale(.4); } to { opacity:1; transform:scale(1); } }
+  @keyframes dashIn { from { stroke-dashoffset:80; opacity:0; } to { stroke-dashoffset:0; opacity:1; } }
+  @keyframes pulse  { 0%,100%{ opacity:.6; } 50%{ opacity:1; } }
+  @keyframes spin   { to { transform:rotate(360deg); } }
+
+  .topo-node { animation: popIn .35s cubic-bezier(.34,1.56,.64,1) both; }
+  .topo-edge { stroke-dasharray:80; animation: dashIn .5s ease both; }
+  .topo-pulse { animation: pulse 2s ease-in-out infinite; }
+  .spin { animation: spin 3s linear infinite; transform-origin: center; }
+
+  /* ── card hover glow ── */
+  .prim-card { transition: border-color .2s, box-shadow .2s; }
+  .prim-card:hover { box-shadow: 0 0 0 1px var(--glow), 0 8px 32px -8px var(--glow); }
+
+  /* ── matrix ── */
+  .mrow:hover td { background: rgba(255,255,255,.04); }
+  .mrow.hl td   { background: rgba(255,255,255,.07); }
+
+  /* ── decision btn ── */
+  .dbtn { transition: background .15s, border-color .15s, transform .15s; }
+  .dbtn:hover { transform: translateY(-1px); }
+  .dbtn:active { transform: translateY(0); }
+
+  /* ── code ── */
+  pre { background:#0e0e1a; border-radius:.75rem; padding:1rem; overflow-x:auto; }
+  code { font-family: 'Menlo','JetBrains Mono','Courier New',monospace; font-size:.8rem; line-height:1.6; }
+
+  /* ── tabs ── */
+  .dtab { transition: color .15s, border-color .15s, background .15s; }
+  .dtab.active { border-bottom-color: var(--tc); color: var(--tc); }
+
+  /* ── accordion ── */
+  .acc-body { display:none; }
+  .acc-body.open { display:block; }
+
+  /* ── scrollbar ── */
+  ::-webkit-scrollbar { width:5px; height:5px; }
+  ::-webkit-scrollbar-track { background:#111; }
+  ::-webkit-scrollbar-thumb { background:#333; border-radius:3px; }
+
+  /* ── hero grid bg ── */
+  .hero-grid {
+    background-image: linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* ── "not" badges ── */
+  .not-badge { text-decoration: line-through; opacity: .55; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════ NAV -->
+<nav class="sticky top-0 z-50 bg-black/70 backdrop-blur-xl border-b border-white/8">
+  <div class="max-w-7xl mx-auto px-4 h-12 flex items-center gap-6">
+    <span class="text-white font-semibold text-sm tracking-tight">Claude Code Orchestration</span>
+    <div class="hidden md:flex gap-5 text-xs text-slate-400">
+      <a href="#overview"  class="hover:text-white transition">Overview</a>
+      <a href="#matrix"    class="hover:text-white transition">Matrix</a>
+      <a href="#decide"    class="hover:text-white transition">Decide</a>
+      <a href="#deepdive"  class="hover:text-white transition">Deep Dives</a>
+      <a href="#examples"  class="hover:text-white transition">Examples</a>
+      <a href="#antipatterns" class="hover:text-white transition">Anti-patterns</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════ HERO -->
+<section class="hero-grid py-24 px-4 text-center">
+  <div class="max-w-3xl mx-auto">
+    <div class="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/25 rounded-full px-3 py-1 text-emerald-400 text-xs mb-6 tracking-wide">
+      Claude Code · Orchestration Guide
+    </div>
+    <h1 class="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
+      6 Orchestration Primitives.
+      <br><span class="text-slate-500">When to use each?</span>
+    </h1>
+    <p class="text-slate-400 text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
+      From a single prompt to 1,000 parallel agents — Claude Code gives you six distinct ways
+      to structure work. Most people use one or two. This guide shows you all six, when each wins,
+      and when it's overkill.
+    </p>
+    <div class="mt-8 flex flex-wrap gap-2 justify-center text-xs">
+      <span class="px-3 py-1 rounded-full border border-slate-700 text-slate-400">Direct / Goal</span>
+      <span class="px-3 py-1 rounded-full border border-purple-700/60 text-purple-400">Skills</span>
+      <span class="px-3 py-1 rounded-full border border-blue-700/60 text-blue-400">Subagents</span>
+      <span class="px-3 py-1 rounded-full border border-emerald-700/60 text-emerald-400">Dynamic Workflows</span>
+      <span class="px-3 py-1 rounded-full border border-amber-700/60 text-amber-400">Loop</span>
+      <span class="px-3 py-1 rounded-full border border-pink-700/60 text-pink-400">Agent Teams</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ OVERVIEW CARDS -->
+<section id="overview" class="py-12 px-4 max-w-7xl mx-auto">
+  <h2 class="text-2xl font-bold text-white mb-1">The 6 Primitives</h2>
+  <p class="text-slate-500 text-sm mb-8">Each has a distinct <em>topology</em> — the shape of how work fans out. Understanding the shape tells you when to reach for it.</p>
+
+  <div class="grid grid-cols-2 lg:grid-cols-3 gap-3" id="prim-cards">
+    <!-- injected by JS -->
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ COMPARISON MATRIX -->
+<section id="matrix" class="py-12 px-4 max-w-7xl mx-auto">
+  <h2 class="text-2xl font-bold text-white mb-1">Comparison Matrix</h2>
+  <p class="text-slate-500 text-sm mb-6">Click any row to highlight. Scroll right on small screens.</p>
+  <div class="overflow-x-auto rounded-2xl border border-white/10">
+    <table class="w-full text-xs min-w-[680px]">
+      <thead>
+        <tr class="bg-[#111118] border-b border-white/10 text-center">
+          <th class="text-left px-4 py-3 text-slate-300 font-semibold w-40">Dimension</th>
+          <th class="px-3 py-3 text-slate-400  font-medium">Direct</th>
+          <th class="px-3 py-3 text-purple-400 font-medium">Skills</th>
+          <th class="px-3 py-3 text-blue-400   font-medium">Subagents</th>
+          <th class="px-3 py-3 text-emerald-400 font-medium">Workflows</th>
+          <th class="px-3 py-3 text-amber-400  font-medium">Loop</th>
+          <th class="px-3 py-3 text-pink-400   font-medium">Teams</th>
+        </tr>
+      </thead>
+      <tbody id="matrix-tbody"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ DECISION NAVIGATOR -->
+<section id="decide" class="py-12 px-4 max-w-3xl mx-auto">
+  <h2 class="text-2xl font-bold text-white mb-1">Decision Navigator</h2>
+  <p class="text-slate-500 text-sm mb-6">Answer three questions about your task — get a concrete recommendation.</p>
+  <div id="decision-box" class="bg-[#0e0e1a] border border-white/10 rounded-2xl p-6 min-h-48"></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ DEEP DIVES -->
+<section id="deepdive" class="py-12 px-4 max-w-5xl mx-auto">
+  <h2 class="text-2xl font-bold text-white mb-1">Primitive Deep Dives</h2>
+  <p class="text-slate-500 text-sm mb-6">Click any primitive to expand — triggers, cost profile, real capabilities and limits.</p>
+  <div id="accordion" class="space-y-2"></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ DOMAIN EXAMPLES -->
+<section id="examples" class="py-12 px-4 max-w-6xl mx-auto">
+  <h2 class="text-2xl font-bold text-white mb-1">Examples by Domain</h2>
+  <p class="text-slate-500 text-sm mb-6">Real scenarios — which primitive wins and exactly why.</p>
+  <div class="flex gap-2 flex-wrap mb-6" id="domain-tabs"></div>
+  <div id="domain-content" class="grid md:grid-cols-2 gap-4"></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ ANTI-PATTERNS -->
+<section id="antipatterns" class="py-12 px-4 max-w-5xl mx-auto">
+  <h2 class="text-2xl font-bold text-white mb-1">Anti-patterns</h2>
+  <p class="text-slate-500 text-sm mb-6">The six most common mis-matches — wrong primitive, right task.</p>
+  <div id="ap-grid" class="grid md:grid-cols-2 gap-4"></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ CHEAT SHEET -->
+<section class="py-12 px-4 max-w-5xl mx-auto">
+  <h2 class="text-2xl font-bold text-white mb-1">Quick Cheat Sheet</h2>
+  <p class="text-slate-500 text-sm mb-6">One-line heuristics to tattoo on the inside of your eyelids.</p>
+  <div class="bg-[#0e0e1a] border border-white/10 rounded-2xl p-6 space-y-3 text-sm" id="cheatsheet"></div>
+</section>
+
+<footer class="py-10 border-t border-white/5 text-center text-slate-600 text-xs">
+  <p>Claude Code Orchestration Guide · <a href="https://code.claude.com/docs/en/workflows" class="text-emerald-500/50 hover:text-emerald-400 transition">code.claude.com/docs/en/workflows</a></p>
+</footer>
+
+<!-- ══════════════════════════════════════════════════════ SCRIPT -->
+<script>
+// ─────────────────────────── DATA ───────────────────────────
+
+const P = {
+  direct: {
+    id:'direct', name:'Direct / Goal', icon:'💬',
+    color:'#94A3B8', bg:'rgba(148,163,184,.08)', border:'rgba(148,163,184,.25)',
+    short:'Single context, no spawning. Claude does everything.',
+    desc:`The baseline: state a goal or ask a question. Claude handles it in the current conversation. No agents, no scripts, no parallelism. The value is speed and simplicity — zero setup, zero overhead. Best when the task fits comfortably in one context and would take a skilled person under 10 minutes.`,
+    when:'Simple, self-contained, one-shot tasks.',
+    notWhen:'Large-scale analysis, repeatable processes, or anything that\'d flood your context.',
+    cost:'Lowest', parallel:'None', repeat:'Manual each time', resumable:false, schedule:false,
+    trigger:`// Just type your prompt
+What does this regex do: /^(?=.*[A-Z])(?=.*\\d).{8,}$/
+
+// Or state a session goal
+Goal: refactor the auth module to use JWTs — start with session store.`,
+    examples:['Explain this error message','Draft a client update email','Suggest three names for this variable','Summarize this document in 3 bullets'],
+    topoSvg: `
+      <rect x="70" y="22" width="60" height="22" rx="5" fill="rgba(148,163,184,.15)" stroke="#94A3B8" stroke-width="1.5" class="topo-node" style="animation-delay:.05s"/>
+      <text x="100" y="37" text-anchor="middle" fill="#94A3B8" font-size="9" class="topo-node" style="animation-delay:.1s">Claude</text>
+      <line x1="130" y1="33" x2="165" y2="33" stroke="#94A3B8" stroke-width="1.5" class="topo-edge" style="animation-delay:.2s"/>
+      <rect x="165" y="22" width="40" height="22" rx="5" fill="rgba(148,163,184,.08)" stroke="rgba(148,163,184,.4)" stroke-width="1" class="topo-node" style="animation-delay:.3s"/>
+      <text x="185" y="37" text-anchor="middle" fill="rgba(148,163,184,.8)" font-size="9" class="topo-node" style="animation-delay:.35s">Result</text>`,
+  },
+  skill: {
+    id:'skill', name:'Skills', icon:'📋',
+    color:'#A78BFA', bg:'rgba(167,139,250,.08)', border:'rgba(167,139,250,.3)',
+    short:'Load a behavioral template. Claude follows it. No agents.',
+    desc:`Skills are markdown files that encode a standardized process — checklists, output formats, step sequences. When you invoke /skill-name, Claude loads those instructions and follows them precisely. Nothing is spawned; Claude itself does the work, just with a predefined playbook. The power is repeatability: every code review hits the same five dimensions, every spec follows the same structure.`,
+    when:'Repeatable, standardized processes you run regularly.',
+    notWhen:'One-off tasks, large-scale parallel work, or tasks without a defined process.',
+    cost:'Low (same as Direct)', parallel:'None', repeat:'Excellent — same every time', resumable:false, schedule:false,
+    trigger:`// Invoke by name
+/code-review high
+/security-review
+/spec
+
+// Create one with skill creator
+/skill-creator
+
+// Skills live at:
+// ~/.claude/skills/name.md      (global, all projects)
+// .claude/skills/name.md        (project-local)`,
+    examples:['/code-review — 5-dimension structured review','/security-review — OWASP checklist','/spec — Requirements + acceptance criteria','/commit — Conventional commit format'],
+    topoSvg: `
+      <rect x="10" y="22" width="45" height="22" rx="5" fill="rgba(167,139,250,.12)" stroke="#A78BFA" stroke-width="1.5" class="topo-node" style="animation-delay:.05s"/>
+      <text x="32" y="37" text-anchor="middle" fill="#A78BFA" font-size="8" class="topo-node" style="animation-delay:.1s">Skill.md</text>
+      <line x1="55" y1="33" x2="78" y2="33" stroke="#A78BFA" stroke-width="1.5" stroke-dasharray="5,3" class="topo-edge" style="animation-delay:.15s"/>
+      <text x="68" y="28" text-anchor="middle" fill="#A78BFA" font-size="8" class="topo-node" style="animation-delay:.2s">loads</text>
+      <rect x="78" y="22" width="50" height="22" rx="5" fill="rgba(167,139,250,.12)" stroke="#A78BFA" stroke-width="1.5" class="topo-node" style="animation-delay:.25s"/>
+      <text x="103" y="37" text-anchor="middle" fill="#A78BFA" font-size="9" class="topo-node" style="animation-delay:.3s">Claude</text>
+      <line x1="128" y1="33" x2="158" y2="33" stroke="#A78BFA" stroke-width="1.5" class="topo-edge" style="animation-delay:.35s"/>
+      <rect x="158" y="22" width="45" height="22" rx="5" fill="rgba(167,139,250,.06)" stroke="rgba(167,139,250,.35)" stroke-width="1" class="topo-node" style="animation-delay:.4s"/>
+      <text x="180" y="37" text-anchor="middle" fill="rgba(167,139,250,.8)" font-size="9" class="topo-node" style="animation-delay:.45s">Output</text>`,
+  },
+  subagent: {
+    id:'subagent', name:'Subagents', icon:'🤖',
+    color:'#60A5FA', bg:'rgba(96,165,250,.08)', border:'rgba(96,165,250,.3)',
+    short:'Delegate one task to an isolated agent. Clean context.',
+    desc:`Subagents spawn a single isolated Claude session to handle one discrete task. The agent works in its own context window, returns a summary, and exits. Your main conversation stays clean. You can spawn a few at a time but not hundreds. Best for side tasks that would otherwise flood your context with tool calls, log reads, or file searches — delegate, get a crisp summary back.`,
+    when:'Side tasks that would pollute your main context, or tasks needing specialist focus.',
+    notWhen:'Tasks requiring 10+ parallel workers or structured verification passes.',
+    cost:'Medium (one sub-session)', parallel:'A few at a time', repeat:'Per-task', resumable:false, schedule:false,
+    trigger:`// @-mention a specific agent (guaranteed to run it)
+@code-reviewer look at the auth changes
+@data-scientist summarize this CSV
+
+// Or let Claude auto-delegate via Agent tool
+// (fires when side task would clutter your context)
+
+// Custom agent definition:
+// ~/.claude/agents/my-agent.md    (personal)
+// .claude/agents/my-agent.md      (project)`,
+    examples:['@code-reviewer — Review PR without polluting context','@data-scientist — Analyze CSV and return key findings','@security-auditor — Audit one module','Agent tool (Claude auto-decides when to spawn)'],
+    topoSvg: `
+      <rect x="5" y="22" width="55" height="22" rx="5" fill="rgba(96,165,250,.1)" stroke="#60A5FA" stroke-width="1.5" class="topo-node" style="animation-delay:.05s"/>
+      <text x="32" y="37" text-anchor="middle" fill="#60A5FA" font-size="8" class="topo-node" style="animation-delay:.1s">You/Claude</text>
+      <line x1="60" y1="33" x2="95" y2="33" stroke="#60A5FA" stroke-width="1.5" class="topo-edge" style="animation-delay:.2s"/>
+      <rect x="95" y="22" width="55" height="22" rx="5" fill="rgba(96,165,250,.12)" stroke="#60A5FA" stroke-width="1.5" class="topo-node" style="animation-delay:.3s"/>
+      <text x="122" y="37" text-anchor="middle" fill="#60A5FA" font-size="8.5" class="topo-node" style="animation-delay:.35s">Agent</text>
+      <line x1="150" y1="33" x2="175" y2="33" stroke="#60A5FA" stroke-width="1" stroke-dasharray="4,3" opacity=".6" class="topo-edge" style="animation-delay:.4s"/>
+      <text x="188" y="30" text-anchor="middle" fill="#60A5FA" font-size="13" class="topo-node" style="animation-delay:.5s">↩</text>`,
+  },
+  workflow: {
+    id:'workflow', name:'Dynamic Workflows', icon:'⚡',
+    color:'#34D399', bg:'rgba(52,211,153,.08)', border:'rgba(52,211,153,.3)',
+    short:'JS script orchestrates N agents in parallel. Resumable.',
+    desc:`Dynamic Workflows are JavaScript orchestration scripts that Claude writes to coordinate tens-to-hundreds of parallel subagents. The key architectural difference: the orchestration plan lives in code, not in Claude's context. This enables (1) massive parallelism — up to 1,000 agents, (2) resumability — pause and continue in the same session, (3) structured verification — independent agents challenge findings before they reach you, and (4) repeatability — save the script and invoke it again. Your session stays responsive while agents work in the background.`,
+    when:'Large-scale parallel work, cross-checking, repeatable pipelines, adversarial verification.',
+    notWhen:'Simple tasks, tasks needing mid-run user input, or tight token budgets.',
+    cost:'High (3–10× Direct)', parallel:'Massive — up to 1,000 agents', repeat:'Excellent — save & rerun script', resumable:true, schedule:false,
+    trigger:`// Include "workflow" in your prompt
+Run a workflow to audit every endpoint in src/routes/
+for missing auth checks.
+
+// Built-in research workflow
+/deep-research What are people actually reporting about X?
+
+// Auto-workflow mode (Claude decides when to use them)
+/effort ultracode
+
+// Monitor + pause mid-run
+/workflows            — see live agent progress
+Ctrl+C                — pause (completed work cached)
+
+// Save for reuse
+// In /workflows → select run → press 's'
+// Saved to ~/.claude/workflows/ or .claude/workflows/`,
+    examples:['Audit 200 API endpoints for auth gaps in parallel','Fact-check 170 claims from X, adversarial verify each','Migrate 500 files from class to hooks pattern','Competitive intelligence across 10 companies simultaneously'],
+    topoSvg: `
+      <rect x="5" y="30" width="45" height="20" rx="4" fill="rgba(52,211,153,.12)" stroke="#34D399" stroke-width="1.5" class="topo-node" style="animation-delay:.05s"/>
+      <text x="27" y="44" text-anchor="middle" fill="#34D399" font-size="7.5" class="topo-node" style="animation-delay:.1s">JS Script</text>
+      <line x1="50" y1="35" x2="80" y2="12" stroke="#34D399" stroke-width="1" opacity=".7" class="topo-edge" style="animation-delay:.15s"/>
+      <line x1="50" y1="40" x2="80" y2="40" stroke="#34D399" stroke-width="1" opacity=".7" class="topo-edge" style="animation-delay:.2s"/>
+      <line x1="50" y1="45" x2="80" y2="67" stroke="#34D399" stroke-width="1" opacity=".7" class="topo-edge" style="animation-delay:.25s"/>
+      <rect x="80" y="4"  width="40" height="15" rx="3" fill="rgba(52,211,153,.1)" stroke="rgba(52,211,153,.5)" stroke-width="1" class="topo-node" style="animation-delay:.3s"/>
+      <text x="100" y="15" text-anchor="middle" fill="#34D399" font-size="6.5" class="topo-node" style="animation-delay:.35s">Agent 1</text>
+      <rect x="80" y="33" width="40" height="15" rx="3" fill="rgba(52,211,153,.1)" stroke="rgba(52,211,153,.5)" stroke-width="1" class="topo-node" style="animation-delay:.4s"/>
+      <text x="100" y="44" text-anchor="middle" fill="#34D399" font-size="6.5" class="topo-node" style="animation-delay:.45s">Agent 2</text>
+      <rect x="80" y="61" width="40" height="15" rx="3" fill="rgba(52,211,153,.1)" stroke="rgba(52,211,153,.5)" stroke-width="1" class="topo-node" style="animation-delay:.5s"/>
+      <text x="100" y="72" text-anchor="middle" fill="#34D399" font-size="6.5" class="topo-node" style="animation-delay:.55s">Agent N</text>
+      <line x1="120" y1="11"  x2="148" y2="38" stroke="#34D399" stroke-width="1" opacity=".5" class="topo-edge" style="animation-delay:.6s"/>
+      <line x1="120" y1="40"  x2="148" y2="40" stroke="#34D399" stroke-width="1" opacity=".5" class="topo-edge" style="animation-delay:.65s"/>
+      <line x1="120" y1="68"  x2="148" y2="42" stroke="#34D399" stroke-width="1" opacity=".5" class="topo-edge" style="animation-delay:.7s"/>
+      <rect x="148" y="28" width="50" height="24" rx="4" fill="rgba(52,211,153,.15)" stroke="#34D399" stroke-width="1.5" class="topo-node" style="animation-delay:.75s"/>
+      <text x="173" y="43" text-anchor="middle" fill="#34D399" font-size="7.5" class="topo-node" style="animation-delay:.8s">Synthesis</text>`,
+    topoH: 90,
+  },
+  loop: {
+    id:'loop', name:'Loop', icon:'🔁',
+    color:'#FBBF24', bg:'rgba(251,191,36,.08)', border:'rgba(251,191,36,.3)',
+    short:'Run the same task on a schedule. Temporal recurrence.',
+    desc:`Loop is temporal parallelism: instead of many agents at once, you get one agent many times. /loop [interval] [command] fires the command repeatedly at the given interval. Omit the interval for self-pacing — Claude decides when to fire again based on task state. Loop is the right tool when you need to monitor, poll, or run a recurring check — but the task itself doesn't need parallelism.`,
+    when:'Monitoring, polling, or any recurring task that fires on a schedule.',
+    notWhen:'Work that can be parallelized across many items simultaneously.',
+    cost:'Low × N iterations', parallel:'None (sequential over time)', repeat:'Built-in', resumable:false, schedule:true,
+    trigger:`// Fixed interval
+/loop 5m /check-deploy-status
+/loop 1h /morning-brief
+/loop 30m check if prod latency is above SLA
+
+// Self-pacing (Claude decides when to fire)
+/loop /babysit-prs
+
+// Combine with another primitive
+/loop 7d run a workflow to audit the .claude folder
+
+// Stop: Ctrl+C or start a new message`,
+    examples:['/loop 2m /check-build — monitor CI until green','/loop 1h /morning-brief — daily brief on schedule','/loop /babysit-prs — self-paced PR monitoring','/loop 7d /weekly-metrics — recurring analytics digest'],
+    topoSvg: `
+      <rect x="70" y="25" width="70" height="22" rx="5" fill="rgba(251,191,36,.1)" stroke="#FBBF24" stroke-width="1.5" class="topo-node" style="animation-delay:.05s"/>
+      <text x="105" y="40" text-anchor="middle" fill="#FBBF24" font-size="9" class="topo-node" style="animation-delay:.1s">Claude</text>
+      <path d="M 80 25 Q 50 25 50 10 Q 50 -5 80 5" stroke="#FBBF24" stroke-width="1.5" fill="none" stroke-dasharray="5,3" class="topo-pulse"/>
+      <text x="35" y="12" fill="#FBBF24" font-size="15" class="topo-node spin" style="animation-delay:.2s;transform-box:fill-box">⟳</text>
+      <text x="157" y="40" fill="#FBBF24" font-size="12" class="topo-node" style="animation-delay:.3s">⏱</text>`,
+  },
+  teams: {
+    id:'teams', name:'Agent Teams', icon:'👥',
+    color:'#F472B6', bg:'rgba(244,114,182,.08)', border:'rgba(244,114,182,.3)',
+    short:'Lead agent coordinates specialist workers. Role-based.',
+    desc:`Agent Teams create a persistent hierarchy: a lead agent coordinates specialist workers, each with their own role, system prompt, and inbox. Unlike workflows (data pipeline), teams are role-based and conversational — workers have persistent identities across a project session. Currently experimental. Best for complex, multi-role projects where specialists need to maintain domain context over time.`,
+    when:'Complex projects with distinct, persistent specialist roles (dev, reviewer, QA, researcher).',
+    notWhen:'Tasks that are really just parallel data processing — use a workflow instead.',
+    cost:'High', parallel:'Moderate (structured hierarchy)', repeat:'Per-project setup', resumable:false, schedule:false,
+    trigger:`// Enable (add to settings.json or environment)
+CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
+CLAUDE_CODE_FORK_SUBAGENT=1
+
+// Define team members as agent files
+// .claude/agents/lead.md
+// .claude/agents/developer.md
+// .claude/agents/reviewer.md
+// .claude/agents/tester.md
+
+// Lead coordinates workers via inboxes
+// Workers can communicate back to lead`,
+    examples:['Lead architect + frontend dev + backend dev + QA','Lead researcher + 3 domain expert workers','Lead editor + writer + fact-checker + formatter','Lead PM + engineer + designer + QA'],
+    topoSvg: `
+      <rect x="73" y="4" width="65" height="20" rx="4" fill="rgba(244,114,182,.12)" stroke="#F472B6" stroke-width="1.5" class="topo-node" style="animation-delay:.05s"/>
+      <text x="105" y="18" text-anchor="middle" fill="#F472B6" font-size="8" class="topo-node" style="animation-delay:.1s">Lead Agent</text>
+      <line x1="88"  y1="24" x2="35"  y2="48" stroke="#F472B6" stroke-width="1" opacity=".6" class="topo-edge" style="animation-delay:.15s"/>
+      <line x1="105" y1="24" x2="105" y2="48" stroke="#F472B6" stroke-width="1" opacity=".6" class="topo-edge" style="animation-delay:.2s"/>
+      <line x1="122" y1="24" x2="175" y2="48" stroke="#F472B6" stroke-width="1" opacity=".6" class="topo-edge" style="animation-delay:.25s"/>
+      <rect x="5"   y="48" width="60" height="18" rx="3" fill="rgba(244,114,182,.08)" stroke="rgba(244,114,182,.45)" stroke-width="1" class="topo-node" style="animation-delay:.3s"/>
+      <text x="35"  y="60" text-anchor="middle" fill="#F472B6" font-size="7" class="topo-node" style="animation-delay:.35s">Developer</text>
+      <rect x="75"  y="48" width="60" height="18" rx="3" fill="rgba(244,114,182,.08)" stroke="rgba(244,114,182,.45)" stroke-width="1" class="topo-node" style="animation-delay:.4s"/>
+      <text x="105" y="60" text-anchor="middle" fill="#F472B6" font-size="7" class="topo-node" style="animation-delay:.45s">Reviewer</text>
+      <rect x="145" y="48" width="60" height="18" rx="3" fill="rgba(244,114,182,.08)" stroke="rgba(244,114,182,.45)" stroke-width="1" class="topo-node" style="animation-delay:.5s"/>
+      <text x="175" y="60" text-anchor="middle" fill="#F472B6" font-size="7" class="topo-node" style="animation-delay:.55s">Tester</text>`,
+    topoH: 80,
+  },
+};
+
+const ORDER = ['direct','skill','subagent','workflow','loop','teams'];
+
+// ─────────────────────────── TOPOLOGY CARDS ───────────────────────────
+document.getElementById('prim-cards').innerHTML = ORDER.map(id => {
+  const p = P[id];
+  const h = p.topoH || 60;
+  return `<div class="prim-card bg-[#0e0e1a] border rounded-xl p-4 cursor-pointer select-none"
+               style="--glow:${p.color}; border-color:${p.border};"
+               onclick="openAccordion('${id}')">
+    <div class="flex items-center gap-2 mb-3">
+      <div class="w-2.5 h-2.5 rounded-full" style="background:${p.color}"></div>
+      <span class="font-semibold text-sm" style="color:${p.color}">${p.name}</span>
+    </div>
+    <svg width="100%" height="${h}" viewBox="0 0 210 ${h}" class="overflow-visible">
+      ${p.topoSvg}
+    </svg>
+    <p class="text-xs text-slate-500 mt-2 leading-snug">${p.short}</p>
+    <div class="mt-3 flex flex-wrap gap-1 text-xs">
+      <span class="px-2 py-0.5 rounded-full text-xs" style="color:${p.color};background:${p.bg};border:1px solid ${p.border}">${p.cost}</span>
+      <span class="px-2 py-0.5 rounded-full bg-white/5 text-slate-400">${p.parallel}</span>
+    </div>
+  </div>`;
+}).join('');
+
+// ─────────────────────────── MATRIX ───────────────────────────
+const MATRIX = [
+  { dim:'Trigger',         vals:['Prompt','/<skill>','@agent or auto','workflow keyword','/loop','TEAMS env'] },
+  { dim:'Agents spawned',  vals:['0','0','1','N (parallel)','0','2–10'] },
+  { dim:'Parallelism',     vals:['✗','✗','~few','✓ massive','✗','✓ limited'] },
+  { dim:'Context isolation',vals:['✗','✗','✓','✓','✗','✓'] },
+  { dim:'Resumable',       vals:['✗','✗','✗','✓','✗','✗'] },
+  { dim:'Scheduling',      vals:['✗','✗','✗','✗','✓','✗'] },
+  { dim:'Verification pass',vals:['✗','depends','✗','✓ built-in','✗','✓'] },
+  { dim:'Session blocks?', vals:['✓','✓','✓','✗ background','✓','✓'] },
+  { dim:'Save & rerun',    vals:['manual','✓ skill file','manual','✓ script file','✓','setup cost'] },
+  { dim:'Relative cost',   vals:['●','●','●●','●●●●','●×N','●●●'] },
+  { dim:'Max scale',       vals:['1 ctx','1 ctx','~10','1 000 agents','∞ iters','~10'] },
+];
+const COLS = ['slate-400','purple-400','blue-400','emerald-400','amber-400','pink-400'];
+
+document.getElementById('matrix-tbody').innerHTML = MATRIX.map(row => `
+  <tr class="mrow border-b border-white/5 cursor-pointer"
+      onclick="this.classList.toggle('hl')">
+    <td class="px-4 py-2.5 text-slate-300 font-medium text-xs whitespace-nowrap">${row.dim}</td>
+    ${row.vals.map((v,i) => `<td class="px-3 py-2.5 text-center text-${COLS[i]} text-xs">${v}</td>`).join('')}
+  </tr>`).join('');
+
+// ─────────────────────────── DECISION TREE ───────────────────────────
+const TREE = {
+  start: {
+    q:'What best describes your task?',
+    opts:[
+      { label:'⚡ Do this one thing, right now',              next:'simple' },
+      { label:'📋 Run a standardized process I do repeatedly', next:'skill-q' },
+      { label:'🔬 Research, audit, or analysis at scale',      next:'scale' },
+      { label:'🔁 Repeat this on a schedule',                  next:'loop-q' },
+      { label:'🏗 Complex project with distinct specialist roles', result:'teams' },
+    ]
+  },
+  simple: {
+    q:'Would this task flood your main context with tool calls or file reads?',
+    opts:[
+      { label:'✗ No — it\'s a short focused question',  result:'direct' },
+      { label:'✓ Yes — lots of reads, searches, logs',  result:'subagent' },
+      { label:'Actually, it spans many files/items →',  next:'scale' },
+    ]
+  },
+  'skill-q': {
+    q:'Does a standardized skill already exist for it?',
+    opts:[
+      { label:'✓ Yes — /code-review, /spec, /commit, etc.',  result:'skill' },
+      { label:'✗ No — I want to create one',                 result:'skill-create' },
+      { label:'I also need to run it across many items →',   next:'scale' },
+    ]
+  },
+  scale: {
+    q:'How many items/files are you working across?',
+    opts:[
+      { label:'1–5 items',              result:'subagent' },
+      { label:'10–50 items',            result:'workflow' },
+      { label:'50+ items or files',     result:'workflow' },
+      { label:'I need adversarial claim verification', result:'workflow' },
+    ]
+  },
+  'loop-q': {
+    q:'What drives the recurrence?',
+    opts:[
+      { label:'⏱ Fixed clock interval (every 5 min, every day)', result:'loop' },
+      { label:'🧠 Self-pacing — let Claude decide when',         result:'loop' },
+      { label:'Actually it\'s parallel work, not time-based →',  next:'scale' },
+    ]
+  },
+};
+
+const RESULTS = {
+  direct:      { name:'Direct / Goal',      color:'#94A3B8', p:'direct',   advice:'Just type your prompt. No setup needed.',                     tips:['Explain this error','Summarize this file','Draft a reply'] },
+  skill:       { name:'Skills',             color:'#A78BFA', p:'skill',    advice:'Use /skill-name. Invokes a saved behavioral template.',        tips:['/code-review','/spec','/security-review'] },
+  'skill-create':{ name:'Create a Skill',   color:'#A78BFA', p:'skill',    advice:'Use /skill-creator to scaffold a new skill file.',            tips:['Define the process steps','Add acceptance criteria','Save to ~/.claude/skills/'] },
+  subagent:    { name:'Subagents',          color:'#60A5FA', p:'subagent', advice:'Use @agent-name or let Claude auto-delegate.',                 tips:['@code-reviewer','@data-scientist','Agent tool (auto)'] },
+  workflow:    { name:'Dynamic Workflows',  color:'#34D399', p:'workflow', advice:'Include "workflow" in your prompt. Test on small slice first.',tips:['Run a workflow to audit…','  /deep-research','  /effort ultracode'] },
+  loop:        { name:'Loop',               color:'#FBBF24', p:'loop',     advice:'Use /loop [interval] [command]. Omit interval for self-pacing.',tips:['/loop 5m /check-deploy','/loop 1h /brief','/loop /babysit-prs'] },
+  teams:       { name:'Agent Teams',        color:'#F472B6', p:'teams',    advice:'Enable CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 and define agents in .claude/agents/.',tips:['Lead + dev + reviewer + QA','Lead + domain experts'] },
+};
+
+let history = ['start'];
+
+function renderDecision() {
+  const box = document.getElementById('decision-box');
+  const cur = history[history.length-1];
+
+  // breadcrumb
+  const crumb = history.length > 1 ? `<div class="flex gap-1 items-center flex-wrap mb-4 text-xs text-slate-500">
+    ${history.map((h,i) => `
+      <span ${i < history.length-1 ? `class="cursor-pointer hover:text-slate-300 transition" onclick="jumpTo(${i})"` : 'class="text-slate-300"'}>
+        ${i===0 ? '🏠' : (TREE[h] ? TREE[h].q.split(' ').slice(0,4).join(' ')+'…' : '↳')}
+      </span>
+      ${i < history.length-1 ? '<span class="text-slate-700">›</span>' : ''}
+    `).join('')}
+  </div>` : '';
+
+  // result?
+  if (!TREE[cur]) {
+    const r = RESULTS[cur];
+    const pdata = P[r.p];
+    box.innerHTML = `${crumb}
+    <div class="text-center py-2">
+      <div class="text-5xl mb-3">✓</div>
+      <h3 class="text-2xl font-bold mb-1" style="color:${r.color}">${r.name}</h3>
+      <p class="text-slate-400 text-sm mb-5">${r.advice}</p>
+      <div class="flex flex-wrap gap-2 justify-center mb-6">
+        ${r.tips.map(t=>`<code class="text-xs px-3 py-1 rounded-full text-slate-300" style="background:${pdata.bg};border:1px solid ${pdata.border}">${t}</code>`).join('')}
+      </div>
+      <button onclick="resetDecision()" class="text-xs text-slate-500 hover:text-white transition border border-white/10 hover:border-white/25 px-4 py-2 rounded-lg">
+        ← Start over
+      </button>
+    </div>`;
+    return;
+  }
+
+  const node = TREE[cur];
+  box.innerHTML = `${crumb}
+  <h3 class="text-base font-semibold text-white mb-4">${node.q}</h3>
+  <div class="space-y-2">
+    ${node.opts.map(o => `
+      <button class="dbtn w-full text-left bg-white/4 hover:bg-white/8 border border-white/10 hover:border-white/20 rounded-xl px-4 py-3 text-sm text-slate-300 hover:text-white transition"
+              onclick="${o.next ? `nav('${o.next}')` : `result('${o.result}')`}">
+        ${o.label}
+      </button>`).join('')}
+  </div>
+  ${history.length > 1 ? `<button onclick="back()" class="mt-4 text-xs text-slate-500 hover:text-slate-300 transition">← Back</button>` : ''}`;
+}
+
+function nav(id)    { history.push(id); renderDecision(); }
+function result(id) { history.push(id); renderDecision(); }
+function back()     { history.pop(); renderDecision(); }
+function jumpTo(i)  { history = history.slice(0,i+1); renderDecision(); }
+function resetDecision() { history = ['start']; renderDecision(); }
+renderDecision();
+
+// ─────────────────────────── ACCORDION ───────────────────────────
+const acc = document.getElementById('accordion');
+ORDER.forEach(id => {
+  const p = P[id];
+  const div = document.createElement('div');
+  div.className = 'border border-white/10 rounded-2xl overflow-hidden';
+  div.id = `acc-${id}`;
+  div.innerHTML = `
+    <button class="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-white/3 transition group" onclick="toggleAcc('${id}')">
+      <span class="text-xl">${p.icon}</span>
+      <div class="flex-1 min-w-0">
+        <span class="font-semibold text-sm" style="color:${p.color}">${p.name}</span>
+        <span class="text-slate-500 text-xs ml-2 truncate hidden md:inline">${p.short}</span>
+      </div>
+      <span class="text-slate-500 text-xs transition-transform acc-chevron-${id}">▼</span>
+    </button>
+    <div id="acc-body-${id}" class="acc-body border-t border-white/10 px-5 py-5 bg-[#08080f]">
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="space-y-4">
+          <div>
+            <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">What it is</div>
+            <p class="text-slate-300 text-sm leading-relaxed">${p.desc}</p>
+          </div>
+          <div>
+            <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Use when</div>
+            <p class="text-sm" style="color:${p.color}">${p.when}</p>
+          </div>
+          <div>
+            <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Avoid when</div>
+            <p class="text-red-300/80 text-sm">${p.notWhen}</p>
+          </div>
+          <div>
+            <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Examples</div>
+            <ul class="space-y-1">
+              ${p.examples.map(e=>`<li class="text-slate-300 text-xs flex gap-2"><span class="text-slate-600 mt-0.5">→</span><span>${e}</span></li>`).join('')}
+            </ul>
+          </div>
+        </div>
+        <div class="space-y-4">
+          <div>
+            <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">How to trigger</div>
+            <pre><code class="text-slate-300">${p.trigger.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</code></pre>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            ${[
+              ['Cost',p.cost],['Parallelism',p.parallel],
+              ['Repeatability',p.repeat],['Resumable',p.resumable?'✓ Yes':'✗ No'],
+            ].map(([k,v])=>`<div class="bg-white/4 rounded-xl p-3">
+              <div class="text-slate-500 mb-0.5">${k}</div>
+              <div class="font-medium ${k==='Resumable'&&p.resumable?'text-emerald-400':'text-slate-200'}">${v}</div>
+            </div>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  acc.appendChild(div);
+});
+
+function toggleAcc(id) {
+  const body = document.getElementById(`acc-body-${id}`);
+  const chev = document.querySelector(`.acc-chevron-${id}`);
+  const open = body.classList.contains('open');
+  body.classList.toggle('open', !open);
+  chev.style.transform = open ? '' : 'rotate(180deg)';
+}
+
+function openAccordion(id) {
+  const body = document.getElementById(`acc-body-${id}`);
+  if (!body.classList.contains('open')) toggleAcc(id);
+  document.getElementById('deepdive').scrollIntoView({behavior:'smooth', block:'start'});
+  setTimeout(() => document.getElementById(`acc-${id}`).scrollIntoView({behavior:'smooth', block:'nearest'}), 400);
+}
+
+// ─────────────────────────── DOMAIN EXAMPLES ───────────────────────────
+const DOMAINS = [
+  { id:'eng',      label:'⚙️ Engineering' },
+  { id:'research', label:'🔬 Research' },
+  { id:'personal', label:'🧠 Personal' },
+  { id:'business', label:'💼 Business' },
+  { id:'creative', label:'🎨 Creative' },
+  { id:'finance',  label:'📊 Finance' },
+];
+
+const EXAMPLES = {
+  eng: [
+    {
+      task:'Review a single PR for correctness',
+      p:'subagent', scale:'Small',
+      why:'One bounded side task. @code-reviewer handles it in isolation so your context stays clean.',
+      prompt:'@code-reviewer review the changes in feature/auth-refactor for correctness and security issues',
+      not:['workflow (massive overkill for one PR)','direct (noisy tool calls pollute context)'],
+    },
+    {
+      task:'Audit all 200 API endpoints for missing authentication',
+      p:'workflow', scale:'Large',
+      why:'200 files in parallel. After the scan pass, adversarial agents try to exploit each finding before it reaches you — only confirmed issues make the final list.',
+      prompt:'Run a workflow to audit every endpoint in src/routes/ for missing auth. Use independent verifier agents to confirm each finding.',
+      not:['subagent (sequential, too slow)','direct (200 files overflow context)'],
+    },
+    {
+      task:'Run my standard 5-dimension code review on every PR',
+      p:'skill', scale:'Medium',
+      why:'Repeatable process. A /code-review skill encodes the checklist once — every invocation hits the same five dimensions, same thoroughness.',
+      prompt:'/code-review high',
+      not:['workflow (one PR, no parallelism needed)','direct (inconsistent approach each time)'],
+    },
+    {
+      task:'Monitor CI build status, alert when it turns red',
+      p:'loop', scale:'Recurring',
+      why:'Time-based recurrence. The build completes sequentially — polling in parallel makes no sense. Loop fires every 2 minutes until it breaks or goes green.',
+      prompt:'/loop 2m check if CI on main branch is green and notify me if it turns red',
+      not:['workflow (builds are sequential, not parallel work)','direct (would need manual re-runs)'],
+    },
+  ],
+  research: [
+    {
+      task:'Quick lookup: what does this library do?',
+      p:'direct', scale:'Trivial',
+      why:'One question, one answer. No parallelism, no context pollution. Just ask.',
+      prompt:'What does the zod library do and when should I use it over yup?',
+      not:['workflow (grotesque overkill)','subagent (no context reason to isolate)'],
+    },
+    {
+      task:'Fact-checked report on a fast-moving topic from X/Twitter',
+      p:'workflow', scale:'Large',
+      why:'~170 claims collected from X. One agent per claim tries to verify it against docs, GitHub, and primary sources. Adversarial agents challenge the survivors. Only verified claims appear in your report.',
+      prompt:'/deep-research What are people actually reporting about dynamic workflows in Claude Code — what holds up vs what is hype?',
+      not:['direct (single pass, no verification, plausible hallucinations)','subagent (no adversarial cross-checking)'],
+    },
+    {
+      task:'Competitor research before a client meeting',
+      p:'subagent', scale:'Small',
+      why:'One bounded research task. Delegate to @researcher — it fetches, reads, and summarizes without cluttering your meeting-prep context.',
+      prompt:'@researcher summarize Cursor\'s key differentiators vs Claude Code — pricing, UX, context model, integrations',
+      not:['direct (lots of web fetches clutter your context)','workflow (one company doesn\'t justify multi-agent)'],
+    },
+    {
+      task:'Research 10 academic papers on a topic, synthesize findings',
+      p:'workflow', scale:'Large',
+      why:'10 papers read in parallel by 10 agents. A synthesis agent merges findings across all. Adversarial pass checks for contradictions between papers.',
+      prompt:'Run a workflow to read these 10 papers [list] and synthesize: methodology, key findings, limitations, and conflicts between studies.',
+      not:['direct (10 papers overflow context)','subagent (sequential reading misses cross-paper synthesis)'],
+    },
+  ],
+  personal: [
+    {
+      task:'Morning brief: news, calendar, priorities',
+      p:'loop', scale:'Recurring',
+      why:'Recurring on a fixed schedule. You want this every morning without thinking about it. /loop fires it daily.',
+      prompt:'/loop 24h /morning-brief',
+      not:['workflow (same task daily, not parallel)','direct (you\'d have to remember to ask)'],
+    },
+    {
+      task:'Monthly .claude folder audit — find bloat and contradictions',
+      p:'workflow', scale:'Medium',
+      why:'Fan out across all skills, hooks, rules, and commands simultaneously. Duplication agents find redundancy. Contradiction agents find rule conflicts. Synthesis delivers a grouped fix list.',
+      prompt:'Run a workflow to audit my ~/.claude and .claude/ folders: find duplicate skills, contradictory rules, stale demo artifacts, and dead commands.',
+      not:['direct (too many files to hold in one context)','subagent (sequential can\'t compare across the whole set)'],
+    },
+    {
+      task:'Quarterly personal review from calendar + email + project notes',
+      p:'workflow', scale:'Medium',
+      why:'Three parallel agents read different sources. Synthesis agent merges themes. A challenge agent verifies claims ("Did you actually ship that?"). Result is balanced.',
+      prompt:'Run a workflow to generate my Q2 2026 personal review from [calendar path], [email archive path], and [project-notes path].',
+      not:['direct (three data sources overflow context)','loop (one-time task, not recurring)'],
+    },
+    {
+      task:'Quick note to yourself about a meeting',
+      p:'direct', scale:'Trivial',
+      why:'A note is a note. Direct is instant and free.',
+      prompt:'Summarize my 3pm meeting discussion into 5 action items.',
+      not:['workflow (overkill)','loop (not recurring)'],
+    },
+  ],
+  business: [
+    {
+      task:'Competitive intelligence across 10 companies',
+      p:'workflow', scale:'Large',
+      why:'10 agents in parallel, one per competitor. Each researches pricing, features, user sentiment, go-to-market simultaneously. Strategist synthesizes and identifies white space.',
+      prompt:'Run a workflow to analyze these 10 competitors: [list]. For each: pricing, key features, user sentiment from Reddit/HN, go-to-market, and main weaknesses.',
+      not:['direct (sequential analysis takes hours)','subagent (a few at a time is 5× slower)'],
+    },
+    {
+      task:'Standard NDA review before signing',
+      p:'skill', scale:'Small',
+      why:'Legal review has a defined checklist. A /review-nda skill encodes it — same rigor every time, no ad-hoc variation.',
+      prompt:'/review-nda docs/client-acme-2026.pdf',
+      not:['workflow (one document, no parallelism)','direct (inconsistent approach each time)'],
+    },
+    {
+      task:'Monitor client dashboard, alert if retention drops',
+      p:'loop', scale:'Recurring',
+      why:'Self-pacing loop watches the dashboard and fires your alert logic whenever a threshold is breached. No human polling needed.',
+      prompt:'/loop check the Amplitude retention dashboard and send me a message if weekly retention drops below 80%',
+      not:['workflow (polling over time, not parallel agents)','subagent (not recurring)'],
+    },
+    {
+      task:'RFP response — 30-page bid across 5 technical domains',
+      p:'teams', scale:'Large',
+      why:'Five specialist workers each own a section: technical architecture, security, pricing, references, executive summary. Lead coordinates and ensures consistency of voice.',
+      prompt:'Set up an agent team to respond to [rfp.pdf]: lead coordinates — assign sections to domain specialists, then merge and edit for consistency.',
+      not:['direct (30 pages, 5 domains, context overflow)','workflow (persistent specialist roles, not a data pipeline)'],
+    },
+  ],
+  creative: [
+    {
+      task:'Outline a novel from 5 narrative perspectives',
+      p:'workflow', scale:'Medium',
+      why:'5 agents brainstorm in parallel from different POVs (protagonist, antagonist, AI character, supporting cast, thematic backbone). A conflict agent finds tensions between them. Unifier synthesizes one coherent 3-act structure.',
+      prompt:'Run a workflow to outline my sci-fi novel about AI consciousness from 5 perspectives: the AI\'s POV, human protagonist, antagonist, supporting cast, and the "what is personhood?" thematic angle.',
+      not:['direct (single perspective lacks depth)','subagent (sequential POVs miss cross-pollination)'],
+    },
+    {
+      task:'Draft a single marketing email',
+      p:'direct', scale:'Trivial',
+      why:'One email, one context. Just ask.',
+      prompt:'Write a launch email for our new workflow feature targeting existing Claude Code Pro users. Tone: confident but not hype.',
+      not:['workflow (absurd overkill)','skill (unless you have a standard email process worth encoding)'],
+    },
+    {
+      task:'Generate 20 distinct A/B headline variants for a landing page',
+      p:'workflow', scale:'Medium',
+      why:'20 agents, each generating one variant from a different angle (benefit-led, fear-based, curiosity, social proof, specificity, etc.). A ranker agent scores them against a rubric.',
+      prompt:'Run a workflow to generate 20 landing page headline variants. Vary: primary benefit, emotional angle, proof type, length, and specificity. Rank by clarity + curiosity.',
+      not:['direct (Claude rarely generates 20 truly distinct options in one pass)','loop (parallel, not over time)'],
+    },
+    {
+      task:'Regular creative writing sprint — same prompt template weekly',
+      p:'loop', scale:'Recurring',
+      why:'You want a creative prompt delivered every Sunday to build a habit. /loop fires the skill on schedule.',
+      prompt:'/loop 7d /creative-sprint — weekly writing prompt',
+      not:['workflow (same task, not parallel work)','direct (need the habit-forming recurrence)'],
+    },
+  ],
+  finance: [
+    {
+      task:'Portfolio risk analysis across 6 dimensions',
+      p:'workflow', scale:'Large',
+      why:'6 agents in parallel: currency, concentration, liquidity, interest rate, counterparty, geopolitical risk. Correlation agent identifies interaction effects. Stress tester models 3-risk scenarios. One sequential pass misses the interactions.',
+      prompt:'Run a workflow to analyze my portfolio for currency risk, concentration risk, liquidity risk, interest rate sensitivity, counterparty risk, and geopolitical exposure.',
+      not:['direct (sequential analysis misses risk interactions)','subagent (not enough parallelism for 6 dimensions × correlation)'],
+    },
+    {
+      task:'Quick P&L calculation on a trade',
+      p:'direct', scale:'Trivial',
+      why:'One calculation. Just ask.',
+      prompt:'I bought 100 shares at $175 and sold at $190, with 0.5% commission each way. What\'s my net P&L?',
+      not:['workflow (astronomical overkill)','subagent (no context reason to isolate)'],
+    },
+    {
+      task:'Weekly earnings digest — public companies in my watchlist',
+      p:'loop', scale:'Recurring',
+      why:'Every Tuesday after market close, run the same earnings research skill across your watchlist. Loop fires it on schedule without you thinking about it.',
+      prompt:'/loop 7d /earnings-digest — watchlist: AAPL, MSFT, GOOGL, NVDA',
+      not:['workflow (same task weekly, not parallel companies — use loop to trigger a workflow if you want both)','direct (habit-forming recurrence is the point)'],
+    },
+    {
+      task:'Analyze 50 companies for a sector deep-dive',
+      p:'workflow', scale:'Large',
+      why:'50 agents in parallel, one per company. Each extracts revenue growth, margins, debt, and moat signals. Synthesis agent produces a ranked comparison table.',
+      prompt:'Run a workflow to analyze these 50 cloud companies [list]: revenue growth, gross margin trend, R&D spend ratio, and competitive moat signals. Rank by risk-adjusted growth.',
+      not:['direct (50 companies overflow context)','loop (parallel companies, not time-based)'],
+    },
+  ],
+};
+
+let activeDomain = 'eng';
+
+function renderTabs() {
+  document.getElementById('domain-tabs').innerHTML = DOMAINS.map(d => `
+    <button class="dtab px-4 py-2 text-sm rounded-lg border transition
+      ${d.id===activeDomain ? 'border-white/20 bg-white/8 text-white' : 'border-white/8 text-slate-500 hover:text-white hover:border-white/15'}"
+      onclick="switchDomain('${d.id}')">${d.label}</button>`).join('');
+}
+
+function renderExamples() {
+  const exs = EXAMPLES[activeDomain] || [];
+  document.getElementById('domain-content').innerHTML = exs.map(ex => {
+    const p = P[ex.p];
+    return `<div class="rounded-2xl p-5 flex flex-col gap-3 border" style="border-color:${p.border};background:linear-gradient(135deg,${p.bg} 0%,transparent 60%)">
+      <div class="flex items-start justify-between gap-2">
+        <h3 class="text-white font-medium text-sm leading-snug">${ex.task}</h3>
+        <span class="shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full" style="color:${p.color};background:${p.bg};border:1px solid ${p.border}">${p.name}</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-slate-600">Scale:</span>
+        <span class="text-xs px-2 py-0.5 rounded-full bg-white/5 text-slate-400">${ex.scale}</span>
+      </div>
+      <p class="text-slate-400 text-xs leading-relaxed">${ex.why}</p>
+      <div class="bg-[#0e0e1a] rounded-xl p-3">
+        <div class="text-xs text-slate-600 mb-1">Example prompt</div>
+        <code class="text-xs leading-relaxed" style="color:${p.color}">${ex.prompt}</code>
+      </div>
+      <div>
+        <div class="text-xs text-slate-600 mb-1">Not:</div>
+        <div class="flex gap-1 flex-wrap">
+          ${ex.not.map(n=>`<span class="not-badge text-xs text-red-400/60 bg-red-950/20 px-2 py-0.5 rounded">${n}</span>`).join('')}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function switchDomain(id) { activeDomain = id; renderTabs(); renderExamples(); }
+renderTabs(); renderExamples();
+
+// ─────────────────────────── ANTI-PATTERNS ───────────────────────────
+const APS = [
+  {
+    title:'Workflow for a simple question',
+    desc:'Running a workflow to explain a function or draft an email burns 5–10× more tokens and takes longer than just asking. The answer is one context window away.',
+    wrong:'Run a workflow to draft a tweet about our new feature',
+    right:'Draft a tweet about our new workflow feature',
+    rule:'If a skilled person could do it in under 5 minutes, use Direct.',
+  },
+  {
+    title:'Direct for 200-file analysis',
+    desc:'Trying to analyze hundreds of files in one conversation floods the context window. Output degrades, hallucinations increase, and you miss files that get truncated.',
+    wrong:'Read all files in src/ and find every security vulnerability',
+    right:'Run a workflow to audit all files in src/ for security vulnerabilities',
+    rule:'If it won\'t fit in one context window, use Workflow.',
+  },
+  {
+    title:'Skill for a one-off task',
+    desc:'Creating a skill for something you\'ll do once is setup cost with no payoff. Skills pay off when the process repeats. One-off tasks should be Direct or Subagent.',
+    wrong:'/skill-creator → create a skill just to review this one client contract',
+    right:'@reviewer look at this contract for unusual liability clauses',
+    rule:'Skills pay off with repetition. Don\'t create them for one-time tasks.',
+  },
+  {
+    title:'Loop to process items in serial',
+    desc:'Using /loop to process 50 files one-by-one over time when a workflow could process all 50 in parallel and finish 50× faster.',
+    wrong:'/loop 0s process the next item in the queue',
+    right:'Run a workflow to process all 50 items in the queue in parallel',
+    rule:'Loop is temporal (one thing, many times). Workflow is spatial (many things, one time).',
+  },
+  {
+    title:'Workflow without testing cost first',
+    desc:'Launching a full run on 500 files without testing on 10 first. If per-item cost is high, a 500-file run can consume your monthly budget in one session.',
+    wrong:'Run a workflow to migrate all 500 components from class to hooks',
+    right:'Run a workflow to migrate src/auth/ (5 components) — then measure cost and quality before scaling',
+    rule:'Always test on a small slice before full-scale workflow runs.',
+  },
+  {
+    title:'Teams when Workflow is the real need',
+    desc:'Standing up an experimental agent team (complex setup, persistent roles) when all you need is parallel data processing — which a workflow does better and without the overhead.',
+    wrong:'Set up a 5-person team to research 10 competitors in parallel',
+    right:'Run a workflow to research 10 competitors in parallel, one agent each',
+    rule:'Teams → persistent specialist roles. Workflows → parallel data pipelines. Know the difference.',
+  },
+];
+
+document.getElementById('ap-grid').innerHTML = APS.map(ap => `
+  <div class="bg-[#0e0e1a] border border-white/10 rounded-2xl p-5 space-y-3">
+    <h3 class="text-white font-semibold text-sm">${ap.title}</h3>
+    <p class="text-slate-400 text-xs leading-relaxed">${ap.desc}</p>
+    <div class="space-y-2">
+      <div class="bg-red-950/25 border border-red-800/25 rounded-xl p-3">
+        <div class="text-xs text-red-400 font-medium mb-1">✗ Wrong primitive</div>
+        <code class="text-xs text-red-300/80">${ap.wrong}</code>
+      </div>
+      <div class="bg-emerald-950/25 border border-emerald-800/25 rounded-xl p-3">
+        <div class="text-xs text-emerald-400 font-medium mb-1">✓ Right primitive</div>
+        <code class="text-xs text-emerald-300/80">${ap.right}</code>
+      </div>
+    </div>
+    <div class="bg-white/4 rounded-xl px-3 py-2 text-xs text-slate-400 italic">${ap.rule}</div>
+  </div>`).join('');
+
+// ─────────────────────────── CHEAT SHEET ───────────────────────────
+const CHEATS = [
+  { p:'direct',   c:'#94A3B8', rule:'If a skilled person could do it in 5 min → Direct' },
+  { p:'skill',    c:'#A78BFA', rule:'If you\'ll run this same process again next week → Skill' },
+  { p:'subagent', c:'#60A5FA', rule:'If the side task would flood your context → Subagent' },
+  { p:'workflow', c:'#34D399', rule:'If you\'d "hire 20 interns for this" or need adversarial checking → Workflow' },
+  { p:'loop',     c:'#FBBF24', rule:'If it needs to happen again on a clock → Loop' },
+  { p:'teams',    c:'#F472B6', rule:'If specialist workers need persistent roles over a long project → Teams' },
+];
+document.getElementById('cheatsheet').innerHTML = CHEATS.map(c => {
+  const p = P[c.p];
+  return `<div class="flex items-start gap-3">
+    <span class="mt-0.5 w-2 h-2 rounded-full shrink-0 mt-1.5" style="background:${c.c}"></span>
+    <div>
+      <span class="font-semibold" style="color:${c.c}">${p.name}</span>
+      <span class="text-slate-400 ml-2">${c.rule}</span>
+    </div>
+  </div>`;
+}).join('');
+
+</script>
+</body>
+</html>

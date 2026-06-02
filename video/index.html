@@ -1,0 +1,681 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1920, height=1080" />
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body {
+      width:1920px; height:1080px; overflow:hidden;
+      background:#080810;
+      font-family: system-ui,-apple-system,'Segoe UI',sans-serif;
+      color:#e2e8f0;
+    }
+
+    /* grid background — always visible */
+    #grid {
+      position:absolute; inset:0; pointer-events:none; z-index:0;
+      background-image:
+        linear-gradient(rgba(255,255,255,.022) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(255,255,255,.022) 1px,transparent 1px);
+      background-size:80px 80px;
+    }
+
+    /* every scene: full-canvas absolute, flex-center, clip manages show/hide */
+    .s {
+      position:absolute; top:0; left:0;
+      width:1920px; height:1080px;
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      overflow:hidden; z-index:1;
+    }
+
+    /* ── shared ── */
+    .badge {
+      display:inline-flex; align-items:center;
+      background:rgba(52,211,153,.1); border:1px solid rgba(52,211,153,.3);
+      border-radius:999px; padding:8px 28px;
+      color:#34D399; font-size:24px; font-weight:500; letter-spacing:.07em;
+      margin-bottom:36px;
+    }
+    .sh  { font-size:72px; font-weight:800; color:#fff; letter-spacing:-.03em; }
+
+    /* ── S1 hero ── */
+    #s1 .h1   { font-size:110px; font-weight:800; color:#fff; letter-spacing:-.04em; text-align:center; line-height:1.05; }
+    #s1 .h2   { font-size:52px; color:#64748b; margin-top:14px; font-weight:400; }
+    #s1 .pills{ display:flex; gap:14px; margin-top:52px; flex-wrap:wrap; justify-content:center; }
+    #s1 .pill { padding:10px 28px; border-radius:999px; font-size:23px; font-weight:500; border:1px solid; }
+    .p-d { color:#94A3B8; border-color:rgba(148,163,184,.4); background:rgba(148,163,184,.08); }
+    .p-s { color:#A78BFA; border-color:rgba(167,139,250,.4); background:rgba(167,139,250,.08); }
+    .p-a { color:#60A5FA; border-color:rgba(96,165,250,.4);  background:rgba(96,165,250,.08); }
+    .p-w { color:#34D399; border-color:rgba(52,211,153,.4);  background:rgba(52,211,153,.08); }
+    .p-l { color:#FBBF24; border-color:rgba(251,191,36,.4);  background:rgba(251,191,36,.08); }
+    .p-t { color:#F472B6; border-color:rgba(244,114,182,.4); background:rgba(244,114,182,.08); }
+
+    /* ── S2 gap ── */
+    #s2 .big  { font-size:92px; font-weight:800; color:#fff; text-align:center; }
+    #s2 .em   { color:#34D399; }
+    #s2 .sub  { font-size:38px; color:#94a3b8; text-align:center; margin-top:22px; max-width:1400px; line-height:1.5; }
+    #s2 .tags { display:flex; gap:20px; margin-top:50px; }
+    #s2 .tag  { padding:14px 32px; border-radius:999px; font-size:22px; background:rgba(148,163,184,.08); border:1px solid rgba(148,163,184,.2); color:#94a3b8; }
+
+    /* ── primitive layout (S3–S8) ── */
+    .prim { display:grid; grid-template-columns:820px 860px; width:1920px; height:1080px; }
+    .pl { display:flex; flex-direction:column; justify-content:center;
+          padding:80px 80px 80px 140px; border-right:1px solid rgba(255,255,255,.07); }
+    .pr { display:flex; flex-direction:column; justify-content:center;
+          padding:80px 120px 80px 80px; }
+    .pi { font-size:76px; margin-bottom:20px; }
+    .pn { font-size:66px; font-weight:800; letter-spacing:-.03em; line-height:1; margin-bottom:14px; }
+    .px { font-size:27px; color:#94a3b8; margin-bottom:40px; line-height:1.5; }
+    .lbl{ font-size:19px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:#64748b; margin-bottom:10px; margin-top:36px; }
+    .pt { font-size:27px; color:#cbd5e1; line-height:1.6; }
+    .pt strong { font-style:normal; font-weight:700; }
+    .cr { display:flex; gap:12px; align-items:center; margin-top:32px; }
+    .cb { padding:8px 20px; border-radius:999px; font-size:19px; font-weight:600; }
+    .cs { padding:8px 20px; border-radius:999px; font-size:19px; background:rgba(255,255,255,.06); color:#94a3b8; }
+
+    .codeblock {
+      background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
+      border-radius:14px; padding:24px 28px; margin-bottom:16px;
+    }
+    .codeblock .lbl2 { font-size:18px; color:#6b7280; margin-bottom:8px; }
+    .codeblock code  { font-size:24px; font-family:monospace; line-height:1.5; }
+
+    /* ── S9 insight ── */
+    #s9 .row { display:flex; gap:40px; align-items:stretch; margin-top:50px; }
+    #s9 .box { padding:52px; border-radius:24px; border:1px solid; flex:1; text-align:center; }
+    #s9 .bh  { font-size:48px; font-weight:800; margin-bottom:16px; }
+    #s9 .bt  { font-size:26px; color:#94a3b8; line-height:1.6; }
+    #s9 .vs  { font-size:60px; font-weight:800; color:#334155; align-self:center; flex-shrink:0; }
+    #s9 .tags2 { display:flex; gap:20px; margin-top:40px; }
+    #s9 .tag2  { padding:16px 32px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:14px; font-size:24px; color:#64748b; }
+
+    /* ── S10 decision ── */
+    #s10 .rules { display:flex; flex-direction:column; gap:22px; margin-top:40px; width:1500px; }
+    #s10 .rule  { display:flex; align-items:center; gap:28px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:18px; padding:28px 44px; }
+    #s10 .rq    { flex:1; font-size:30px; color:#cbd5e1; }
+    #s10 .rarr  { font-size:28px; color:#64748b; }
+    #s10 .rans  { font-size:27px; font-weight:700; padding:10px 24px; border-radius:999px; white-space:nowrap; }
+
+    /* ── S11 examples ── */
+    #s11 .egrid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:22px; margin-top:40px; width:1640px; }
+    #s11 .ex    { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:18px; padding:32px 36px; }
+    #s11 .et    { font-size:24px; color:#94a3b8; margin-bottom:14px; line-height:1.4; }
+    #s11 .ep    { font-size:22px; font-weight:700; padding:8px 18px; border-radius:999px; display:inline-block; border:1px solid; }
+
+    /* ── S12 anti-patterns ── */
+    #s12 .aps { display:grid; grid-template-columns:1fr 1fr 1fr; gap:28px; margin-top:40px; width:1700px; }
+    #s12 .ap  { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:22px; padding:44px; }
+    #s12 .apt { font-size:28px; font-weight:700; color:#fff; margin-bottom:18px; }
+    #s12 .apw { background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.2); border-radius:12px; padding:18px 22px; margin-bottom:10px; }
+    #s12 .apr { background:rgba(52,211,153,.08); border:1px solid rgba(52,211,153,.2); border-radius:12px; padding:18px 22px; }
+    #s12 .apl { font-size:17px; font-weight:700; margin-bottom:6px; }
+    #s12 .apc { font-size:20px; font-family:monospace; line-height:1.4; }
+    #s12 .aph { font-size:18px; color:#6b7280; font-style:italic; margin-top:16px; }
+
+    /* ── S13 outro ── */
+    #s13 .ot { font-size:88px; font-weight:800; color:#fff; text-align:center; letter-spacing:-.04em; }
+    #s13 .os { font-size:34px; color:#64748b; text-align:center; margin-top:16px; }
+    #s13 .links { display:flex; gap:24px; margin-top:52px; }
+    #s13 .lk1 { padding:20px 44px; background:rgba(52,211,153,.1); border:1px solid rgba(52,211,153,.3); border-radius:16px; font-size:27px; font-weight:600; color:#34D399; }
+    #s13 .lk2 { padding:20px 44px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:16px; font-size:27px; color:#64748b; }
+  </style>
+</head>
+<body>
+<div id="root"
+     data-composition-id="main"
+     data-start="0"
+     data-duration="126"
+     data-width="1920"
+     data-height="1080">
+
+  <div id="grid"></div>
+
+  <!-- ══ S1: HERO  0–8s ══════════════════════════════════════════ -->
+  <div id="s1" class="clip s"
+       data-start="0" data-duration="8" data-track-index="1">
+    <div class="badge">Claude Code · Orchestration Guide</div>
+    <div class="h1">6 Orchestration Primitives.</div>
+    <div class="h2">When to use each?</div>
+    <div class="pills">
+      <span class="pill p-d">💬 Direct / Goal</span>
+      <span class="pill p-s">📋 Skills</span>
+      <span class="pill p-a">🤖 Subagents</span>
+      <span class="pill p-w">⚡ Dynamic Workflows</span>
+      <span class="pill p-l">🔁 Loop</span>
+      <span class="pill p-t">👥 Agent Teams</span>
+    </div>
+  </div>
+
+  <!-- ══ S2: THE GAP  8–15s ══════════════════════════════════════ -->
+  <div id="s2" class="clip s"
+       data-start="8" data-duration="7" data-track-index="1">
+    <div class="big">Most people use <span class="em">one.</span></div>
+    <div class="sub">Claude Code gives you six — each with a fundamentally different<br>shape, cost profile, and right scenario.</div>
+    <div class="tags">
+      <span class="tag">Temporal vs Spatial</span>
+      <span class="tag">Parallel vs Sequential</span>
+      <span class="tag">Repeatable vs One-off</span>
+    </div>
+  </div>
+
+  <!-- ══ S3: DIRECT / GOAL  15–23s ═══════════════════════════════ -->
+  <div id="s3" class="clip s"
+       data-start="15" data-duration="8" data-track-index="1">
+    <div class="prim">
+      <div class="pl">
+        <div class="pi">💬</div>
+        <div class="pn" style="color:#94A3B8">Direct / Goal</div>
+        <div class="px">Single context. No agents spawned.<br>Claude handles everything inline.</div>
+        <svg viewBox="0 0 520 70" height="70" width="520">
+          <rect x="20" y="17" width="100" height="34" rx="8" fill="rgba(148,163,184,.12)" stroke="#94A3B8" stroke-width="1.8"/>
+          <text x="70" y="39" text-anchor="middle" fill="#94A3B8" font-size="15" font-family="system-ui">Claude</text>
+          <line x1="120" y1="34" x2="195" y2="34" stroke="#94A3B8" stroke-width="2"/>
+          <polygon points="195,27 213,34 195,41" fill="#94A3B8"/>
+          <rect x="213" y="17" width="100" height="34" rx="8" fill="rgba(148,163,184,.06)" stroke="rgba(148,163,184,.35)" stroke-width="1.5"/>
+          <text x="263" y="39" text-anchor="middle" fill="rgba(148,163,184,.8)" font-size="15" font-family="system-ui">Result</text>
+        </svg>
+        <div class="lbl">Use when</div>
+        <div class="pt">Task fits in one context. A skilled person could do it in <strong>5 minutes</strong>. Simple, focused, one-shot.</div>
+        <div class="cr">
+          <span class="cb" style="color:#94A3B8;background:rgba(148,163,184,.1);border:1px solid rgba(148,163,184,.3)">● Lowest cost</span>
+          <span class="cs">Instant</span>
+        </div>
+      </div>
+      <div class="pr">
+        <div class="lbl">Examples</div>
+        <div class="codeblock"><div class="lbl2">prompt</div><code style="color:#94A3B8">Explain this regex: /^(?=.*[A-Z]).{8,}$/</code></div>
+        <div class="codeblock"><div class="lbl2">prompt</div><code style="color:#94A3B8">Draft a client update email about the delay</code></div>
+        <div class="codeblock"><div class="lbl2">prompt</div><code style="color:#94A3B8">Summarize this PR description in 3 bullets</code></div>
+        <div class="lbl" style="margin-top:32px">Not for</div>
+        <div class="pt" style="color:rgba(239,68,68,.7)">Tasks that overflow a context window or need to run again next week</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ S4: SKILLS  23–31s ══════════════════════════════════════ -->
+  <div id="s4" class="clip s"
+       data-start="23" data-duration="8" data-track-index="1">
+    <div class="prim">
+      <div class="pl">
+        <div class="pi">📋</div>
+        <div class="pn" style="color:#A78BFA">Skills</div>
+        <div class="px">Loads a behavioral template.<br>Claude follows it. No agents spawned.</div>
+        <svg viewBox="0 0 520 70" height="70" width="520">
+          <rect x="10" y="19" width="90" height="30" rx="7" fill="rgba(167,139,250,.12)" stroke="#A78BFA" stroke-width="1.8"/>
+          <text x="55" y="38" text-anchor="middle" fill="#A78BFA" font-size="13" font-family="system-ui">Skill.md</text>
+          <line x1="100" y1="34" x2="148" y2="34" stroke="#A78BFA" stroke-width="1.8" stroke-dasharray="5,3"/>
+          <text x="124" y="28" text-anchor="middle" fill="#A78BFA" font-size="11" font-family="system-ui">loads</text>
+          <rect x="148" y="19" width="90" height="30" rx="7" fill="rgba(167,139,250,.12)" stroke="#A78BFA" stroke-width="1.8"/>
+          <text x="193" y="38" text-anchor="middle" fill="#A78BFA" font-size="14" font-family="system-ui">Claude</text>
+          <line x1="238" y1="34" x2="285" y2="34" stroke="#A78BFA" stroke-width="1.8"/>
+          <polygon points="285,27 303,34 285,41" fill="#A78BFA"/>
+          <rect x="303" y="19" width="90" height="30" rx="7" fill="rgba(167,139,250,.06)" stroke="rgba(167,139,250,.35)" stroke-width="1.5"/>
+          <text x="348" y="38" text-anchor="middle" fill="rgba(167,139,250,.8)" font-size="13" font-family="system-ui">Output</text>
+        </svg>
+        <div class="lbl">Use when</div>
+        <div class="pt">You have a <strong style="color:#A78BFA">repeatable process</strong> — same checklist, same structure, same rigor every invocation.</div>
+        <div class="cr">
+          <span class="cb" style="color:#A78BFA;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.3)">● Low cost</span>
+          <span class="cs">✓ Repeatable</span>
+        </div>
+      </div>
+      <div class="pr">
+        <div class="lbl">Built-in skills</div>
+        <div class="codeblock" style="border-color:rgba(167,139,250,.2);background:rgba(167,139,250,.05)">
+          <code style="color:#A78BFA;font-size:26px">/code-review</code><span style="font-size:20px;color:#64748b;margin-left:16px">5-dimension structured review</span>
+        </div>
+        <div class="codeblock" style="border-color:rgba(167,139,250,.2);background:rgba(167,139,250,.05)">
+          <code style="color:#A78BFA;font-size:26px">/security-review</code><span style="font-size:20px;color:#64748b;margin-left:16px">OWASP checklist</span>
+        </div>
+        <div class="codeblock" style="border-color:rgba(167,139,250,.2);background:rgba(167,139,250,.05)">
+          <code style="color:#A78BFA;font-size:26px">/spec</code><span style="font-size:20px;color:#64748b;margin-left:16px">Requirements + acceptance criteria</span>
+        </div>
+        <div class="codeblock" style="border-color:rgba(167,139,250,.2);background:rgba(167,139,250,.05)">
+          <code style="color:#A78BFA;font-size:26px">/commit</code><span style="font-size:20px;color:#64748b;margin-left:16px">Conventional commit format</span>
+        </div>
+        <div style="margin-top:20px;padding:20px 24px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;font-size:22px;color:#64748b">
+          Create your own: <code style="color:#A78BFA">/skill-creator</code> → <code style="color:#A78BFA;font-size:18px">~/.claude/skills/</code>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ S5: SUBAGENTS  31–39s ═══════════════════════════════════ -->
+  <div id="s5" class="clip s"
+       data-start="31" data-duration="8" data-track-index="1">
+    <div class="prim">
+      <div class="pl">
+        <div class="pi">🤖</div>
+        <div class="pn" style="color:#60A5FA">Subagents</div>
+        <div class="px">One isolated agent handles one task.<br>Your context stays clean.</div>
+        <svg viewBox="0 0 520 70" height="70" width="520">
+          <rect x="10" y="19" width="120" height="30" rx="7" fill="rgba(96,165,250,.1)" stroke="#60A5FA" stroke-width="1.8"/>
+          <text x="70" y="38" text-anchor="middle" fill="#60A5FA" font-size="14" font-family="system-ui">You / Claude</text>
+          <line x1="130" y1="34" x2="190" y2="34" stroke="#60A5FA" stroke-width="1.8"/>
+          <polygon points="190,27 208,34 190,41" fill="#60A5FA"/>
+          <rect x="208" y="19" width="110" height="30" rx="7" fill="rgba(96,165,250,.12)" stroke="#60A5FA" stroke-width="1.8"/>
+          <text x="263" y="38" text-anchor="middle" fill="#60A5FA" font-size="14" font-family="system-ui">Agent</text>
+          <line x1="318" y1="34" x2="368" y2="34" stroke="#60A5FA" stroke-width="1.5" stroke-dasharray="5,3" opacity=".6"/>
+          <text x="395" y="42" text-anchor="middle" fill="#60A5FA" font-size="26" font-family="system-ui">↩</text>
+        </svg>
+        <div class="lbl">Use when</div>
+        <div class="pt">The task would <strong style="color:#60A5FA">pollute your context</strong> with logs, searches, file reads — delegate and get a crisp summary back.</div>
+        <div class="cr">
+          <span class="cb" style="color:#60A5FA;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.3)">●● Medium</span>
+          <span class="cs">Context-isolated</span>
+        </div>
+      </div>
+      <div class="pr">
+        <div class="lbl">How to trigger</div>
+        <div class="codeblock" style="border-color:rgba(96,165,250,.2);background:rgba(96,165,250,.05)">
+          <div class="lbl2">@-mention (guaranteed)</div>
+          <code style="color:#60A5FA;font-size:24px">@code-reviewer look at the auth changes</code>
+        </div>
+        <div class="codeblock" style="border-color:rgba(96,165,250,.2);background:rgba(96,165,250,.05)">
+          <div class="lbl2">Another agent</div>
+          <code style="color:#60A5FA;font-size:24px">@data-scientist analyze this CSV and summarize</code>
+        </div>
+        <div class="codeblock" style="border-color:rgba(96,165,250,.2);background:rgba(96,165,250,.05)">
+          <div class="lbl2">Custom agent file</div>
+          <code style="color:#475569;font-size:22px">.claude/agents/my-agent.md</code>
+        </div>
+        <div class="lbl" style="margin-top:28px">Not for</div>
+        <div class="pt" style="color:rgba(239,68,68,.7)">10+ parallel workers — use a Workflow instead</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ S6: DYNAMIC WORKFLOWS  39–53s ═══════════════════════════ -->
+  <div id="s6" class="clip s"
+       data-start="39" data-duration="14" data-track-index="1">
+    <div class="prim">
+      <div class="pl">
+        <div class="pi">⚡</div>
+        <div class="pn" style="color:#34D399">Dynamic Workflows</div>
+        <div class="px">JS script orchestrates N agents in parallel.<br>Resumable. Session stays responsive.</div>
+        <svg viewBox="0 0 520 108" height="108" width="520">
+          <rect x="10" y="37" width="96" height="30" rx="7" fill="rgba(52,211,153,.12)" stroke="#34D399" stroke-width="1.8"/>
+          <text x="58" y="56" text-anchor="middle" fill="#34D399" font-size="13" font-family="system-ui">JS Script</text>
+          <line x1="106" y1="42" x2="175" y2="12" stroke="#34D399" stroke-width="1.4" opacity=".7"/>
+          <line x1="106" y1="52" x2="175" y2="52" stroke="#34D399" stroke-width="1.4" opacity=".7"/>
+          <line x1="106" y1="62" x2="175" y2="91" stroke="#34D399" stroke-width="1.4" opacity=".7"/>
+          <rect x="175" y="0"  width="85" height="24" rx="6" fill="rgba(52,211,153,.1)" stroke="rgba(52,211,153,.5)" stroke-width="1.5"/>
+          <text x="217" y="16" text-anchor="middle" fill="#34D399" font-size="12" font-family="system-ui">Agent 1</text>
+          <rect x="175" y="40" width="85" height="24" rx="6" fill="rgba(52,211,153,.1)" stroke="rgba(52,211,153,.5)" stroke-width="1.5"/>
+          <text x="217" y="56" text-anchor="middle" fill="#34D399" font-size="12" font-family="system-ui">Agent 2</text>
+          <rect x="175" y="79" width="85" height="24" rx="6" fill="rgba(52,211,153,.1)" stroke="rgba(52,211,153,.5)" stroke-width="1.5"/>
+          <text x="217" y="95" text-anchor="middle" fill="#34D399" font-size="12" font-family="system-ui">Agent N</text>
+          <line x1="260" y1="12" x2="330" y2="50" stroke="#34D399" stroke-width="1.2" opacity=".5"/>
+          <line x1="260" y1="52" x2="330" y2="52" stroke="#34D399" stroke-width="1.2" opacity=".5"/>
+          <line x1="260" y1="91" x2="330" y2="54" stroke="#34D399" stroke-width="1.2" opacity=".5"/>
+          <rect x="330" y="37" width="115" height="30" rx="7" fill="rgba(52,211,153,.15)" stroke="#34D399" stroke-width="1.8"/>
+          <text x="387" y="56" text-anchor="middle" fill="#34D399" font-size="13" font-family="system-ui">Synthesis</text>
+        </svg>
+        <div class="lbl">Use when</div>
+        <div class="pt"><strong style="color:#34D399">Large-scale parallel work</strong> — 200 file audits, 170-claim verification, 500 component migrations, 10-company research.</div>
+        <div class="cr">
+          <span class="cb" style="color:#34D399;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.3)">●●●● High (3–10× direct)</span>
+          <span class="cs">Max 1,000 agents</span>
+        </div>
+      </div>
+      <div class="pr">
+        <div class="lbl">How to trigger</div>
+        <div class="codeblock" style="border-color:rgba(52,211,153,.2);background:rgba(52,211,153,.05)">
+          <div class="lbl2">"workflow" keyword</div>
+          <code style="color:#34D399;font-size:21px">Run a workflow to audit every endpoint<br>in src/routes/ for missing auth checks.</code>
+        </div>
+        <div class="codeblock" style="border-color:rgba(52,211,153,.2);background:rgba(52,211,153,.05)">
+          <div class="lbl2">Built-in research workflow</div>
+          <code style="color:#34D399;font-size:24px">/deep-research [topic]</code>
+        </div>
+        <div class="codeblock" style="border-color:rgba(52,211,153,.2);background:rgba(52,211,153,.05)">
+          <div class="lbl2">Auto-workflow mode (whole session)</div>
+          <code style="color:#34D399;font-size:24px">/effort ultracode</code>
+        </div>
+        <div style="display:flex;gap:14px;margin-top:16px">
+          <div style="flex:1;padding:16px 20px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);border-radius:12px;text-align:center">
+            <div style="font-size:18px;color:#64748b">Session</div>
+            <div style="font-size:22px;font-weight:700;color:#34D399;margin-top:4px">✓ Stays responsive</div>
+          </div>
+          <div style="flex:1;padding:16px 20px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);border-radius:12px;text-align:center">
+            <div style="font-size:18px;color:#64748b">Resumable</div>
+            <div style="font-size:22px;font-weight:700;color:#34D399;margin-top:4px">✓ Same session</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ S7: LOOP  53–61s ════════════════════════════════════════ -->
+  <div id="s7" class="clip s"
+       data-start="53" data-duration="8" data-track-index="1">
+    <div class="prim">
+      <div class="pl">
+        <div class="pi">🔁</div>
+        <div class="pn" style="color:#FBBF24">Loop</div>
+        <div class="px">Same task on a schedule.<br>Temporal recurrence — not parallelism.</div>
+        <svg viewBox="0 0 520 80" height="80" width="520">
+          <rect x="155" y="24" width="130" height="30" rx="7" fill="rgba(251,191,36,.1)" stroke="#FBBF24" stroke-width="1.8"/>
+          <text x="220" y="43" text-anchor="middle" fill="#FBBF24" font-size="16" font-family="system-ui">Claude</text>
+          <path d="M 168 24 Q 115 24 115 8 Q 115 -6 168 6" stroke="#FBBF24" stroke-width="2" fill="none" stroke-dasharray="5,3" opacity=".7"/>
+          <text x="92" y="11" fill="#FBBF24" font-size="26" font-family="system-ui" opacity=".8">⟳</text>
+          <circle cx="360" cy="39" r="20" stroke="#FBBF24" stroke-width="1.8" fill="none" opacity=".5"/>
+          <text x="360" y="47" text-anchor="middle" fill="#FBBF24" font-size="20" font-family="system-ui">⏱</text>
+          <text x="400" y="43" fill="#FBBF24" font-size="20" font-family="system-ui" opacity=".6">every Xm</text>
+        </svg>
+        <div class="lbl">Use when</div>
+        <div class="pt"><strong style="color:#FBBF24">Time drives the repetition</strong> — monitoring, polling, recurring reports, daily habits. The task itself is not parallel.</div>
+        <div class="cr">
+          <span class="cb" style="color:#FBBF24;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3)">● × N iterations</span>
+          <span class="cs">✓ Self-pacing</span>
+        </div>
+      </div>
+      <div class="pr">
+        <div class="lbl">Trigger patterns</div>
+        <div class="codeblock" style="border-color:rgba(251,191,36,.2);background:rgba(251,191,36,.05)">
+          <div class="lbl2">Fixed interval</div>
+          <code style="color:#FBBF24;font-size:26px">/loop 2m /check-build-status</code>
+        </div>
+        <div class="codeblock" style="border-color:rgba(251,191,36,.2);background:rgba(251,191,36,.05)">
+          <div class="lbl2">Daily recurring</div>
+          <code style="color:#FBBF24;font-size:26px">/loop 24h /morning-brief</code>
+        </div>
+        <div class="codeblock" style="border-color:rgba(251,191,36,.2);background:rgba(251,191,36,.05)">
+          <div class="lbl2">Self-paced (model decides interval)</div>
+          <code style="color:#FBBF24;font-size:26px">/loop /babysit-prs</code>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ S8: TEAMS  61–69s ═══════════════════════════════════════ -->
+  <div id="s8" class="clip s"
+       data-start="61" data-duration="8" data-track-index="1">
+    <div class="prim">
+      <div class="pl">
+        <div class="pi">👥</div>
+        <div class="pn" style="color:#F472B6">Agent Teams</div>
+        <div class="px">Lead agent coordinates<br>specialist workers. Role-based.</div>
+        <svg viewBox="0 0 520 118" height="118" width="520">
+          <rect x="195" y="4" width="130" height="30" rx="7" fill="rgba(244,114,182,.12)" stroke="#F472B6" stroke-width="1.8"/>
+          <text x="260" y="23" text-anchor="middle" fill="#F472B6" font-size="14" font-family="system-ui">Lead Agent</text>
+          <line x1="224" y1="34" x2="72"  y2="66" stroke="#F472B6" stroke-width="1.4" opacity=".6"/>
+          <line x1="260" y1="34" x2="260" y2="66" stroke="#F472B6" stroke-width="1.4" opacity=".6"/>
+          <line x1="296" y1="34" x2="448" y2="66" stroke="#F472B6" stroke-width="1.4" opacity=".6"/>
+          <rect x="14"  y="66" width="116" height="28" rx="6" fill="rgba(244,114,182,.08)" stroke="rgba(244,114,182,.4)" stroke-width="1.5"/>
+          <text x="72"  y="84" text-anchor="middle" fill="#F472B6" font-size="13" font-family="system-ui">Developer</text>
+          <rect x="202" y="66" width="116" height="28" rx="6" fill="rgba(244,114,182,.08)" stroke="rgba(244,114,182,.4)" stroke-width="1.5"/>
+          <text x="260" y="84" text-anchor="middle" fill="#F472B6" font-size="13" font-family="system-ui">Reviewer</text>
+          <rect x="390" y="66" width="116" height="28" rx="6" fill="rgba(244,114,182,.08)" stroke="rgba(244,114,182,.4)" stroke-width="1.5"/>
+          <text x="448" y="84" text-anchor="middle" fill="#F472B6" font-size="13" font-family="system-ui">Tester</text>
+        </svg>
+        <div class="lbl">Use when</div>
+        <div class="pt">Complex project where specialists need <strong style="color:#F472B6">persistent roles</strong> over many turns — not just a one-shot data pipeline.</div>
+        <div class="cr">
+          <span class="cb" style="color:#F472B6;background:rgba(244,114,182,.1);border:1px solid rgba(244,114,182,.3)">●●● High</span>
+          <span class="cs">Experimental</span>
+        </div>
+      </div>
+      <div class="pr">
+        <div class="lbl">Teams vs Workflows</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:10px">
+          <div style="padding:26px;background:rgba(244,114,182,.06);border:1px solid rgba(244,114,182,.2);border-radius:14px">
+            <div style="font-size:22px;font-weight:700;color:#F472B6;margin-bottom:10px">Teams</div>
+            <div style="font-size:19px;color:#94a3b8;line-height:1.7">Persistent specialist roles<br>Lead coordinates peers<br>Role-based collaboration<br>Long-running projects</div>
+          </div>
+          <div style="padding:26px;background:rgba(52,211,153,.06);border:1px solid rgba(52,211,153,.2);border-radius:14px">
+            <div style="font-size:22px;font-weight:700;color:#34D399;margin-bottom:10px">Workflows</div>
+            <div style="font-size:19px;color:#94a3b8;line-height:1.7">Data pipeline pattern<br>Script-driven fan-out<br>Parallel + synthesize<br>Resumable, repeatable</div>
+          </div>
+        </div>
+        <div style="margin-top:20px;padding:22px 26px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px">
+          <div style="font-size:18px;color:#475569;margin-bottom:8px">Enable in settings</div>
+          <code style="font-size:20px;color:#F472B6;font-family:monospace">CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1</code>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ S9: CORE INSIGHT  69–80s ════════════════════════════════ -->
+  <div id="s9" class="clip s"
+       data-start="69" data-duration="11" data-track-index="1">
+    <div class="badge">The Core Insight</div>
+    <div class="sh">The shape of work determines the primitive.</div>
+    <div class="row">
+      <div class="box" style="border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.06)">
+        <div class="bh" style="color:#FBBF24">Loop</div>
+        <div style="font-size:52px;margin-bottom:14px">⏱</div>
+        <div class="bt"><strong style="color:#FBBF24">Temporal</strong> — one thing,<br>many times over a clock</div>
+      </div>
+      <div class="vs">≠</div>
+      <div class="box" style="border-color:rgba(52,211,153,.3);background:rgba(52,211,153,.06)">
+        <div class="bh" style="color:#34D399">Workflow</div>
+        <div style="font-size:52px;margin-bottom:14px">⚡</div>
+        <div class="bt"><strong style="color:#34D399">Spatial</strong> — many things,<br>at the same moment</div>
+      </div>
+      <div class="vs">≠</div>
+      <div class="box" style="border-color:rgba(167,139,250,.3);background:rgba(167,139,250,.06)">
+        <div class="bh" style="color:#A78BFA">Skill</div>
+        <div style="font-size:52px;margin-bottom:14px">📋</div>
+        <div class="bt"><strong style="color:#A78BFA">Repeatable</strong> — same process,<br>same rigor, every time</div>
+      </div>
+    </div>
+    <div class="tags2">
+      <div class="tag2">Direct = <strong style="color:#94A3B8">simple + focused</strong></div>
+      <div class="tag2">Subagent = <strong style="color:#60A5FA">isolated + clean</strong></div>
+      <div class="tag2">Teams = <strong style="color:#F472B6">specialist + persistent</strong></div>
+    </div>
+  </div>
+
+  <!-- ══ S10: DECISION FRAMEWORK  80–94s ═════════════════════════ -->
+  <div id="s10" class="clip s"
+       data-start="80" data-duration="14" data-track-index="1">
+    <div class="badge">Decision Framework</div>
+    <div class="sh">5 questions. One answer.</div>
+    <div class="rules">
+      <div class="rule" id="r1">
+        <div class="rq">Would hiring 20 interns help with this task?</div>
+        <div class="rarr">→</div>
+        <div class="rans" style="color:#34D399;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.3)">⚡ Dynamic Workflow</div>
+      </div>
+      <div class="rule" id="r2">
+        <div class="rq">Will you run this exact process again next week?</div>
+        <div class="rarr">→</div>
+        <div class="rans" style="color:#A78BFA;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.3)">📋 Skill</div>
+      </div>
+      <div class="rule" id="r3">
+        <div class="rq">Does it repeat on a clock, not in parallel?</div>
+        <div class="rarr">→</div>
+        <div class="rans" style="color:#FBBF24;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3)">🔁 Loop</div>
+      </div>
+      <div class="rule" id="r4">
+        <div class="rq">Would this flood your main context window?</div>
+        <div class="rarr">→</div>
+        <div class="rans" style="color:#60A5FA;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.3)">🤖 Subagent</div>
+      </div>
+      <div class="rule" id="r5">
+        <div class="rq">None of the above — just do this one thing now.</div>
+        <div class="rarr">→</div>
+        <div class="rans" style="color:#94A3B8;background:rgba(148,163,184,.1);border:1px solid rgba(148,163,184,.3)">💬 Direct</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ S11: EXAMPLES  94–108s ══════════════════════════════════ -->
+  <div id="s11" class="clip s"
+       data-start="94" data-duration="14" data-track-index="1">
+    <div class="badge">Real Examples</div>
+    <div class="sh">Same domain. Different primitives.</div>
+    <div class="egrid">
+      <div class="ex" id="e1">
+        <div class="et">Review a single PR for correctness</div>
+        <span class="ep" style="color:#60A5FA;background:rgba(96,165,250,.1);border-color:rgba(96,165,250,.3)">🤖 Subagent</span>
+      </div>
+      <div class="ex" id="e2">
+        <div class="et">Audit 200 endpoints for missing auth</div>
+        <span class="ep" style="color:#34D399;background:rgba(52,211,153,.1);border-color:rgba(52,211,153,.3)">⚡ Workflow</span>
+      </div>
+      <div class="ex" id="e3">
+        <div class="et">Run code review on every PR (standard)</div>
+        <span class="ep" style="color:#A78BFA;background:rgba(167,139,250,.1);border-color:rgba(167,139,250,.3)">📋 Skill</span>
+      </div>
+      <div class="ex" id="e4">
+        <div class="et">Monitor CI build, alert when red</div>
+        <span class="ep" style="color:#FBBF24;background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.3)">🔁 Loop</span>
+      </div>
+      <div class="ex" id="e5">
+        <div class="et">Research 10 competitors simultaneously</div>
+        <span class="ep" style="color:#34D399;background:rgba(52,211,153,.1);border-color:rgba(52,211,153,.3)">⚡ Workflow</span>
+      </div>
+      <div class="ex" id="e6">
+        <div class="et">Draft a single marketing email</div>
+        <span class="ep" style="color:#94A3B8;background:rgba(148,163,184,.1);border-color:rgba(148,163,184,.3)">💬 Direct</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ S12: ANTI-PATTERNS  108–120s ════════════════════════════ -->
+  <div id="s12" class="clip s"
+       data-start="108" data-duration="12" data-track-index="1">
+    <div class="badge">Anti-patterns</div>
+    <div class="sh">The 3 most common mis-matches.</div>
+    <div class="aps">
+      <div class="ap" id="ap1">
+        <div class="apt">Workflow for a simple question</div>
+        <div class="apw"><div class="apl" style="color:#ef4444">✗ Wrong</div><div class="apc" style="color:rgba(239,68,68,.8)">Run a workflow to draft a tweet</div></div>
+        <div class="apr"><div class="apl" style="color:#34D399">✓ Right</div><div class="apc" style="color:rgba(52,211,153,.8)">Draft a tweet about our new feature</div></div>
+        <div class="aph">If 1 person could do it in 5 min → Direct</div>
+      </div>
+      <div class="ap" id="ap2">
+        <div class="apt">Direct for 200-file analysis</div>
+        <div class="apw"><div class="apl" style="color:#ef4444">✗ Wrong</div><div class="apc" style="color:rgba(239,68,68,.8)">Read all files in src/ and find every bug</div></div>
+        <div class="apr"><div class="apl" style="color:#34D399">✓ Right</div><div class="apc" style="color:rgba(52,211,153,.8)">Run a workflow to audit all files in src/</div></div>
+        <div class="aph">If it won't fit in one context → Workflow</div>
+      </div>
+      <div class="ap" id="ap3">
+        <div class="apt">Loop when you need parallelism</div>
+        <div class="apw"><div class="apl" style="color:#ef4444">✗ Wrong</div><div class="apc" style="color:rgba(239,68,68,.8)">/loop 0s process next item in queue</div></div>
+        <div class="apr"><div class="apl" style="color:#34D399">✓ Right</div><div class="apc" style="color:rgba(52,211,153,.8)">Run a workflow to process all 50 in parallel</div></div>
+        <div class="aph">Loop = temporal. Workflow = spatial.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ S13: OUTRO  120–126s ════════════════════════════════════ -->
+  <div id="s13" class="clip s"
+       data-start="120" data-duration="6" data-track-index="1">
+    <div class="badge">Claude Code · Orchestration Guide</div>
+    <div class="ot">6 primitives. One right tool.</div>
+    <div class="os">Direct · Skills · Subagents · Workflows · Loop · Teams</div>
+    <div class="links">
+      <div class="lk1">Interactive guide: tutorial.html</div>
+      <div class="lk2">code.claude.com/docs/en/workflows</div>
+    </div>
+  </div>
+
+</div><!-- /root -->
+
+<script>
+  window.__timelines = window.__timelines || {};
+  const tl = gsap.timeline({ paused: true });
+
+  // ── S1 HERO (t=0) ──────────────────────────────────────────────
+  tl.from('#s1 .badge',  { opacity:0, y:20, duration:0.6 }, 0.2)
+    .from('#s1 .h1',     { opacity:0, y:55, duration:0.9, ease:'power3.out' }, 0.6)
+    .from('#s1 .h2',     { opacity:0, y:25, duration:0.7 }, 1.2)
+    .from('#s1 .pill',   { opacity:0, y:18, duration:0.45, stagger:0.11 }, 1.7);
+
+  // ── S2 GAP (t=8) ──────────────────────────────────────────────
+  tl.from('#s2 .big',  { opacity:0, y:44, duration:0.9 }, 8.3)
+    .from('#s2 .sub',  { opacity:0, y:22, duration:0.7 }, 9.0)
+    .from('#s2 .tag',  { opacity:0, y:12, duration:0.4, stagger:0.14 }, 9.7);
+
+  // ── S3 DIRECT (t=15) ─────────────────────────────────────────
+  tl.from('#s3 .pi',           { opacity:0, scale:0.4, duration:0.5 }, 15.3)
+    .from('#s3 .pn',           { opacity:0, x:-28, duration:0.6 }, 15.7)
+    .from('#s3 .px',           { opacity:0, x:-18, duration:0.5 }, 16.1)
+    .from('#s3 svg',           { opacity:0, scaleX:0, transformOrigin:'left center', duration:0.7 }, 16.5)
+    .from('#s3 .lbl, #s3 .pt, #s3 .cr', { opacity:0, y:10, duration:0.4, stagger:0.15 }, 17.1)
+    .from('#s3 .pr > *',       { opacity:0, x:22, duration:0.45, stagger:0.12 }, 17.0);
+
+  // ── S4 SKILLS (t=23) ─────────────────────────────────────────
+  tl.from('#s4 .pi',     { opacity:0, scale:0.4, duration:0.5 }, 23.3)
+    .from('#s4 .pn',     { opacity:0, x:-28, duration:0.6 }, 23.7)
+    .from('#s4 .px',     { opacity:0, x:-18, duration:0.5 }, 24.1)
+    .from('#s4 svg',     { opacity:0, scaleX:0, transformOrigin:'left center', duration:0.7 }, 24.5)
+    .from('#s4 .lbl, #s4 .pt, #s4 .cr', { opacity:0, y:10, duration:0.4, stagger:0.15 }, 25.0)
+    .from('#s4 .pr > *', { opacity:0, x:22, duration:0.4, stagger:0.11 }, 24.8);
+
+  // ── S5 SUBAGENTS (t=31) ──────────────────────────────────────
+  tl.from('#s5 .pi',     { opacity:0, scale:0.4, duration:0.5 }, 31.3)
+    .from('#s5 .pn',     { opacity:0, x:-28, duration:0.6 }, 31.7)
+    .from('#s5 .px',     { opacity:0, x:-18, duration:0.5 }, 32.1)
+    .from('#s5 svg',     { opacity:0, scaleX:0, transformOrigin:'left center', duration:0.7 }, 32.5)
+    .from('#s5 .lbl, #s5 .pt, #s5 .cr', { opacity:0, y:10, duration:0.4, stagger:0.15 }, 33.0)
+    .from('#s5 .pr > *', { opacity:0, x:22, duration:0.4, stagger:0.11 }, 32.8);
+
+  // ── S6 WORKFLOWS (t=39) ──────────────────────────────────────
+  tl.from('#s6 .pi',     { opacity:0, scale:0.4, duration:0.5 }, 39.3)
+    .from('#s6 .pn',     { opacity:0, x:-28, duration:0.6 }, 39.7)
+    .from('#s6 .px',     { opacity:0, x:-18, duration:0.5 }, 40.1)
+    .from('#s6 svg',     { opacity:0, scaleX:0, transformOrigin:'left center', duration:0.8 }, 40.5)
+    .from('#s6 .lbl, #s6 .pt, #s6 .cr', { opacity:0, y:10, duration:0.4, stagger:0.15 }, 41.2)
+    .from('#s6 .pr > *', { opacity:0, x:22, duration:0.45, stagger:0.13 }, 40.8);
+
+  // ── S7 LOOP (t=53) ───────────────────────────────────────────
+  tl.from('#s7 .pi',     { opacity:0, scale:0.4, duration:0.5 }, 53.3)
+    .from('#s7 .pn',     { opacity:0, x:-28, duration:0.6 }, 53.7)
+    .from('#s7 .px',     { opacity:0, x:-18, duration:0.5 }, 54.1)
+    .from('#s7 svg',     { opacity:0, scaleX:0, transformOrigin:'left center', duration:0.7 }, 54.5)
+    .from('#s7 .lbl, #s7 .pt, #s7 .cr', { opacity:0, y:10, duration:0.4, stagger:0.15 }, 55.0)
+    .from('#s7 .pr > *', { opacity:0, x:22, duration:0.4, stagger:0.11 }, 54.8);
+
+  // ── S8 TEAMS (t=61) ──────────────────────────────────────────
+  tl.from('#s8 .pi',     { opacity:0, scale:0.4, duration:0.5 }, 61.3)
+    .from('#s8 .pn',     { opacity:0, x:-28, duration:0.6 }, 61.7)
+    .from('#s8 .px',     { opacity:0, x:-18, duration:0.5 }, 62.1)
+    .from('#s8 svg',     { opacity:0, scaleX:0, transformOrigin:'left center', duration:0.7 }, 62.5)
+    .from('#s8 .lbl, #s8 .pt, #s8 .cr', { opacity:0, y:10, duration:0.4, stagger:0.15 }, 63.0)
+    .from('#s8 .pr > *', { opacity:0, x:22, duration:0.45, stagger:0.13 }, 62.8);
+
+  // ── S9 INSIGHT (t=69) ────────────────────────────────────────
+  tl.from('#s9 .badge',  { opacity:0, y:18, duration:0.5 }, 69.3)
+    .from('#s9 .sh',     { opacity:0, y:32, duration:0.7 }, 69.8)
+    .from('#s9 .box',    { opacity:0, y:28, scale:0.96, duration:0.6, stagger:0.18 }, 70.4)
+    .from('#s9 .vs',     { opacity:0, duration:0.4, stagger:0.18 }, 70.7)
+    .from('#s9 .tag2',   { opacity:0, y:14, duration:0.4, stagger:0.12 }, 72.0);
+
+  // ── S10 DECISION (t=80) ──────────────────────────────────────
+  tl.from('#s10 .badge', { opacity:0, y:18, duration:0.5 }, 80.3)
+    .from('#s10 .sh',    { opacity:0, y:32, duration:0.7 }, 80.8)
+    .from('#r1', { opacity:0, x:-36, duration:0.5 }, 81.7)
+    .from('#r2', { opacity:0, x:-36, duration:0.5 }, 83.2)
+    .from('#r3', { opacity:0, x:-36, duration:0.5 }, 84.7)
+    .from('#r4', { opacity:0, x:-36, duration:0.5 }, 86.2)
+    .from('#r5', { opacity:0, x:-36, duration:0.5 }, 87.7);
+
+  // ── S11 EXAMPLES (t=94) ──────────────────────────────────────
+  tl.from('#s11 .badge', { opacity:0, y:18, duration:0.5 }, 94.3)
+    .from('#s11 .sh',    { opacity:0, y:32, duration:0.7 }, 94.8)
+    .from('#e1,#e2,#e3,#e4,#e5,#e6', { opacity:0, y:24, duration:0.5, stagger:0.16 }, 95.6);
+
+  // ── S12 ANTI-PATTERNS (t=108) ────────────────────────────────
+  tl.from('#s12 .badge', { opacity:0, y:18, duration:0.5 }, 108.3)
+    .from('#s12 .sh',    { opacity:0, y:32, duration:0.7 }, 108.8)
+    .from('#ap1', { opacity:0, y:28, scale:0.97, duration:0.6 }, 109.6)
+    .from('#ap2', { opacity:0, y:28, scale:0.97, duration:0.6 }, 110.6)
+    .from('#ap3', { opacity:0, y:28, scale:0.97, duration:0.6 }, 111.6);
+
+  // ── S13 OUTRO (t=120) ────────────────────────────────────────
+  tl.from('#s13 .badge', { opacity:0, y:18, duration:0.5 }, 120.4)
+    .from('#s13 .ot',    { opacity:0, y:44, duration:0.9, ease:'power3.out' }, 120.9)
+    .from('#s13 .os',    { opacity:0, y:20, duration:0.6 }, 121.7)
+    .from('#s13 .lk1, #s13 .lk2', { opacity:0, y:16, duration:0.5, stagger:0.18 }, 122.4);
+
+  window.__timelines['main'] = tl;
+</script>
+</body>
+</html>

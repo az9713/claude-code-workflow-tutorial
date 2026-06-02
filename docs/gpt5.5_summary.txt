@@ -1,0 +1,798 @@
+
+https://chatgpt.com/c/6a1e4156-e4f8-83e8-ba34-9cc03d1bcfbf
+
+Below is a **replication-ready capture** of the three dynamic workflows from the transcript. The actual video does **not** expose the full prompts verbatim; where I reconstruct missing implementation details, I mark them as **[GAP-FILL]**.
+
+Source: uploaded transcript. 
+
+---
+
+# Core Idea: Dynamic Workflow as “One Claude Window, Many Worker Agents”
+
+The repeated pattern is:
+
+```text
+One visible Claude Code session
+    → asks for a “workflow”
+    → Claude decomposes the task
+    → many agents inspect separate evidence slices
+    → a synthesis agent merges findings
+    → a verifier / devil’s advocate pass checks claims
+    → final report only includes verified findings
+```
+
+The key point is **not** “ask Claude a better prompt.”
+The key point is **agentic fan-out + independent verification + structured synthesis**.
+
+The host’s central claim: most users skip the **second pass**. That second pass is what turns a fast, plausible report into something you can rely on.
+
+---
+
+# Workflow 1 — Personalized Model Upgrade Guide
+
+## Purpose
+
+Build a personalized guide for migrating from one model to another, for example **Claude Opus 4.7 → Opus 4.8**, based on your own Claude Code history.
+
+Instead of reading generic release notes or hype posts, the workflow mines your own Claude Code JSONL logs and asks:
+
+```text
+Given how I actually use Claude Code,
+what should I change when using the new model?
+```
+
+The video says the workflow analyzed roughly **1,500 Claude Code conversations**, identified the user’s patterns, then produced:
+
+| Output                     | Description                                              |
+| -------------------------- | -------------------------------------------------------- |
+| Upgrade report             | Personalized migration guide                             |
+| Prompting checklist        | What to change in day-to-day prompting                   |
+| Competency comparison      | Where the new model differs from the old one             |
+| Skill/tool recommendations | Which workflows, tools, or Claude Code features to adopt |
+| Optional explainer HTML    | A personalized tutorial page                             |
+| Optional 2-minute video    | Generated from the HTML using Hyperframes                |
+| Optional reusable skill    | “model migration” skill for future model upgrades        |
+
+---
+
+## Inputs
+
+```text
+1. Folder containing Claude Code JSONL session logs
+2. Target model or feature change
+   Example: Opus 4.7 → Opus 4.8
+3. Official docs / release notes
+4. Your desired output format
+   Example: HTML report, markdown report, checklist, video script
+```
+
+The transcript says Claude Code session logs are stored locally as JSONL files and contain user / assistant turns plus tool calls. It also says the logs are token-heavy, so dynamic workflows help by letting agents analyze them outside the main context window.
+
+---
+
+## Native Workflow Shape
+
+```text
+Coordinator Agent
+│
+├── Session Mining Agents
+│   ├── inspect JSONL files
+│   ├── classify usage patterns
+│   ├── detect recurring prompt styles
+│   ├── detect token-heavy workflows
+│   ├── detect common failure modes
+│   └── extract representative examples
+│
+├── Model Comparison Agent
+│   ├── read official release notes
+│   ├── invoke claude-code-guide agent
+│   ├── compare new model behavior to old model behavior
+│   └── map differences onto user-specific usage
+│
+├── Prompt Upgrade Agent
+│   ├── rewrite common prompts
+│   ├── produce copy-ready prompt upgrades
+│   └── identify prompts that no longer need workarounds
+│
+├── Synthesis Agent
+│   ├── executive summary
+│   ├── usage profile
+│   ├── prompting changes
+│   ├── tool/skill recommendations
+│   └── advanced opportunities
+│
+└── Verification Agent
+    ├── check claims against JSONL evidence
+    ├── check model claims against docs
+    ├── reject unsupported recommendations
+    └── mark confidence level
+```
+
+---
+
+## Reconstructed Prompt Skeleton
+
+```text
+I want you to build a dynamic workflow.
+
+Goal:
+Analyze my Claude Code session history and produce a personalized migration guide
+for moving from [OLD MODEL] to [NEW MODEL].
+
+Inputs:
+- Claude Code JSONL logs are located at: [PATH]
+- Official model documentation / release notes are available through the Claude Code guide agent.
+- Focus on how I actually use Claude Code, not generic release-note summaries.
+
+Workflow requirements:
+
+1. Data analysis
+   - Inspect all JSONL files in the provided folder.
+   - Identify my dominant Claude Code use cases.
+   - Classify sessions by task type:
+     coding, debugging, research, refactoring, writing, planning, agents, MCP, hooks, skills, etc.
+   - Extract recurring prompting patterns.
+   - Identify token-heavy or failure-prone patterns.
+   - Identify repeated workarounds I use.
+
+2. Model comparison
+   - Use the claude-code-guide agent to retrieve current official documentation
+     and release notes for [NEW MODEL].
+   - Compare [OLD MODEL] and [NEW MODEL] only where the difference matters for my actual usage.
+   - Avoid generic hype.
+
+3. Personalized synthesis
+   Produce:
+   - Executive summary
+   - My usage profile
+   - What should stay the same
+   - What should change
+   - Prompting pattern upgrades
+   - Tool / skill / workflow recommendations
+   - Dynamic workflows I should create
+   - Advanced opportunities
+
+4. Copy-ready artifacts
+   - Give me revised prompts I can directly use.
+   - Give me a checklist for daily usage.
+   - Give me a migration guide in Markdown.
+   - Optionally generate an HTML explainer page.
+
+5. Verification pass
+   - For every recommendation, cite either:
+     a) evidence from my JSONL usage history, or
+     b) official model documentation.
+   - Mark unsupported or speculative claims as such.
+   - Remove recommendations that do not survive verification.
+
+Final output:
+A concise but complete personalized upgrade guide.
+```
+
+---
+
+## Gap-Fills Needed to Make It Production-Grade
+
+### [GAP-FILL] Add Evidence Tables
+
+The video says the workflow mines patterns, but the deployable version should force evidence tables:
+
+```text
+For each recommendation, include:
+
+- Recommendation
+- Evidence from my logs
+- Model/doc evidence
+- Confidence: High / Medium / Low
+- Example old prompt
+- Example upgraded prompt
+```
+
+This prevents the workflow from becoming a generic “new model is better” report.
+
+---
+
+### [GAP-FILL] Add Sampling Control
+
+For 1,500 JSONL sessions, you need sampling / sharding rules:
+
+```text
+Shard logs by:
+- project folder
+- month
+- task type
+- file size
+- tool-call density
+
+Require each worker agent to summarize only its assigned shard.
+No worker may synthesize global conclusions.
+Only the synthesis agent may aggregate.
+```
+
+Otherwise worker agents overgeneralize from their shard.
+
+---
+
+### [GAP-FILL] Add “Prompt Diff” Output
+
+This is especially useful for you:
+
+```text
+Old style:
+“Please carefully analyze and explain...”
+
+New style:
+“Diagnose the failing test. Return root cause, patch, and verification command.”
+
+Why:
+The transcript says Opus 4.8 seemed better with more literal, direct prompts.
+```
+
+You want a **prompt migration diff**, not just advice.
+
+---
+
+# Workflow 2 — Fact-Checked Research Report
+
+## Purpose
+
+Research a fast-moving topic by pulling actual claims from X / Twitter, then verifying each claim independently.
+
+The video’s example topic:
+
+```text
+Dynamic workflows associated with Opus 4.8:
+what are people reporting, what holds up, what is hype?
+```
+
+The host uses **Apify X Scraper** to collect real X threads, not only blog posts or documentation summaries.
+
+---
+
+## Inputs
+
+```text
+1. Research topic
+2. X / Twitter scraper source, e.g. Apify actor
+3. Query terms
+4. Date range
+5. Verification sources:
+   - official docs
+   - GitHub repos
+   - changelogs
+   - release notes
+   - firsthand examples
+   - reproduced tests, if possible
+```
+
+---
+
+## Native Workflow Shape
+
+```text
+Coordinator Agent
+│
+├── Collection Agent
+│   ├── use Apify X Scraper
+│   ├── collect posts / threads
+│   ├── normalize URLs, authors, timestamps
+│   └── deduplicate repeated claims
+│
+├── Claim Extraction Agents
+│   ├── split posts into atomic claims
+│   ├── remove pure opinions
+│   ├── classify claims by type
+│   └── create claim ledger
+│
+├── Verification Agents
+│   ├── check official docs
+│   ├── check GitHub repos
+│   ├── check changelogs
+│   ├── check demos or examples
+│   └── mark support level
+│
+├── Adversarial Review Agents
+│   ├── challenge each surviving claim
+│   ├── look for contradictory evidence
+│   ├── identify hype / ambiguity
+│   └── downgrade confidence
+│
+└── Final Report Agent
+    ├── survived claims
+    ├── cut claims
+    ├── unconfirmed claims
+    ├── hype claims
+    ├── source links
+    └── practical takeaways
+```
+
+The transcript says the host’s example went through roughly **170 claims** and spun up nearly **200 agents** to adversarially verify which claims survived versus which were hype.
+
+---
+
+## Claim Ledger Format
+
+This is the most important artifact.
+
+```text
+| Claim ID | Original Claim | Source | Type | Verification Result | Evidence | Verdict |
+|---|---|---|---|---|---|---|
+| C001 | Dynamic workflows can fan out many agents | X post URL | Capability | Supported | Docs / observed example | Survives |
+| C002 | Dynamic workflows replace all manual review | X post URL | Exaggeration | Not supported | No primary evidence | Cut |
+| C003 | Feature burns tokens heavily | X post URL | Cost/ops | Supported | Host observation + usage behavior | Survives |
+```
+
+Use verdicts like:
+
+```text
+SURVIVES
+CUT
+UNCONFIRMED
+PARTIALLY TRUE
+HYPE / OVERCLAIM
+CONTEXT-DEPENDENT
+```
+
+---
+
+## Reconstructed Prompt Skeleton
+
+```text
+I want you to build a self-checking research workflow.
+
+Research topic:
+[TOPIC]
+
+Goal:
+Find what people are actually reporting, extract the claims, verify them,
+and tell me what survives versus what gets cut.
+
+Source collection:
+- Use Apify X Scraper or equivalent X/Twitter collection mechanism.
+- Search for:
+  [QUERY TERMS]
+- Prefer primary posts, technical demos, GitHub links, screenshots with reproducible evidence,
+  official docs, release notes, and firsthand reports.
+- Avoid relying only on blog summaries.
+
+Workflow:
+
+1. Collect sources
+   - Pull relevant X threads/posts.
+   - Preserve author, URL, timestamp, engagement metadata if available.
+   - Deduplicate reposts and repeated claims.
+
+2. Extract atomic claims
+   - Break each post into individual claims.
+   - Ignore vague enthusiasm unless it implies a testable claim.
+   - Classify each claim:
+     capability, benchmark, workflow, cost, limitation, bug, integration, security, hype.
+
+3. Verify claims
+   - For each claim, find independent supporting or contradicting evidence.
+   - Prefer official docs, GitHub repos, changelogs, reproducible demos, and primary sources.
+   - Mark whether the evidence actually supports the claim or merely repeats it.
+
+4. Adversarial pass
+   - Assign separate agents to challenge the strongest claims.
+   - Look for missing context, cherry-picking, outdated information, and unsupported leaps.
+   - Downgrade claims where needed.
+
+5. Produce final report
+   Include:
+   - Executive summary
+   - Claims that survive
+   - Claims that are partially true
+   - Claims that are unconfirmed
+   - Claims that get cut
+   - What I should believe
+   - What I should test myself
+   - Links to evidence
+
+Hard rule:
+No claim reaches the final “survives” list unless it has independent verification.
+```
+
+---
+
+## Gap-Fills Needed to Make It Production-Grade
+
+### [GAP-FILL] Separate “Claim Repetition” from “Claim Verification”
+
+A common research-agent failure:
+
+```text
+Many people repeat X.
+Therefore X is true.
+```
+
+You want:
+
+```text
+Many people repeat X.
+Independent evidence confirms X.
+Therefore X survives.
+```
+
+Add this rule:
+
+```text
+Do not count multiple X posts as independent verification unless they contain independent evidence.
+```
+
+---
+
+### [GAP-FILL] Add Reproduction Tier
+
+For technical claims, classify evidence by strength:
+
+| Tier | Evidence Type                 | Trust         |
+| ---- | ----------------------------- | ------------- |
+| A    | Reproduced locally            | Strongest     |
+| B    | Official docs / release notes | Strong        |
+| C    | GitHub issue / PR / commit    | Strong-medium |
+| D    | Firsthand demo with artifacts | Medium        |
+| E    | X anecdote only               | Weak          |
+| F    | Repeated hype claim           | Very weak     |
+
+This makes the report much harder to fool.
+
+---
+
+### [GAP-FILL] Add Budget Control
+
+The transcript notes that this can burn tokens heavily and that the user can intervene to reduce depth.
+
+Add:
+
+```text
+Before running full depth, ask me to choose:
+
+Depth 1 — Quick scan:
+- 20–40 claims
+- 5–10 verification agents
+
+Depth 2 — Standard:
+- 75–150 claims
+- 20–50 verification agents
+
+Depth 3 — Exhaustive:
+- 150+ claims
+- adversarial verification
+- source triangulation
+```
+
+For your use, **Depth 2** is usually the sweet spot.
+
+---
+
+# Workflow 3 — Claude Code Setup Audit
+
+## Purpose
+
+Audit your Claude Code ecosystem:
+
+```text
+global .claude folder
+project .claude folders
+agents
+skills
+rules
+hooks
+commands
+CLAUDE.md files
+```
+
+The goal is to find:
+
+```text
+overlapping skills
+duplicate skills
+contradictory rules
+stale demo artifacts
+dead weight
+bloated context
+unused commands
+conflicting instructions
+project/global drift
+```
+
+The host says this is not a daily workflow. It is more like a **monthly hygiene pass** for your agentic operating system.
+
+---
+
+## Inputs
+
+```text
+1. Global Claude folder
+2. Project-level Claude folders
+3. CLAUDE.md files
+4. Skills folders
+5. Agents folders
+6. Hooks
+7. Commands
+8. Optional usage logs
+```
+
+---
+
+## Native Workflow Shape
+
+```text
+Coordinator Agent
+│
+├── Inventory Agents
+│   ├── list global Claude assets
+│   ├── list project Claude assets
+│   ├── map rules, skills, hooks, commands
+│   └── build asset registry
+│
+├── Duplication Agents
+│   ├── detect duplicate skills
+│   ├── detect near-duplicate skills
+│   ├── detect overlapping commands
+│   └── detect copied stock Anthropic assets
+│
+├── Contradiction Agents
+│   ├── compare global vs project rules
+│   ├── find conflicting instructions
+│   ├── find priority ambiguity
+│   └── flag unsafe or obsolete rules
+│
+├── Usage / Dead-Weight Agents
+│   ├── identify unused demo skills
+│   ├── detect stale folders
+│   ├── detect commands never referenced
+│   └── detect context-bloating assets
+│
+├── Refactor Planner
+│   ├── group issues by severity
+│   ├── recommend merge/delete/archive actions
+│   └── propose new folder structure
+│
+└── Verification Agent
+    ├── re-check proposed deletions
+    ├── ensure no active workflow depends on removed assets
+    └── produce safe fix list
+```
+
+---
+
+## Issue Taxonomy
+
+Use this structure.
+
+| Severity | Meaning                               | Example                                                                      |
+| -------- | ------------------------------------- | ---------------------------------------------------------------------------- |
+| High     | Contradictory or dangerous behavior   | Global rule says “never edit tests”; project rule says “modify tests freely” |
+| Medium   | Context bloat or degraded performance | Duplicate skills copied into multiple folders                                |
+| Low      | Hygiene issue                         | Old demo skill unused for months                                             |
+| Info     | Optional improvement                  | Rename vague command for clarity                                             |
+
+---
+
+## Reconstructed Prompt Skeleton
+
+```text
+I want you to build a Claude Code setup audit workflow.
+
+Goal:
+Audit my global and project Claude Code configuration folders and identify
+overlap, contradiction, bloat, stale artifacts, and improvement opportunities.
+
+Scope:
+- Global Claude folder: [PATH]
+- Project Claude folders: [PATHS]
+- Include:
+  - CLAUDE.md
+  - agents
+  - skills
+  - hooks
+  - commands
+  - rules
+  - project-specific instructions
+
+Workflow:
+
+1. Inventory
+   - Build a complete registry of all Claude Code assets.
+   - For each asset, record:
+     path, type, purpose, scope, last modified time, and apparent owner/use case.
+
+2. Detect duplication
+   - Find exact duplicate files.
+   - Find near-duplicate skills or commands.
+   - Find stock assets copied multiple times.
+   - Identify duplicated instructions that bloat context.
+
+3. Detect contradictions
+   - Compare global rules against project rules.
+   - Identify conflicting instructions.
+   - Identify ambiguous precedence.
+   - Identify rules that could cause bad agent behavior.
+
+4. Detect dead weight
+   - Find old demo skills.
+   - Find unused commands.
+   - Find isolated folders.
+   - Find assets that appear abandoned or superseded.
+
+5. Group findings
+   Produce grouped issue lists:
+   - High severity
+   - Medium severity
+   - Low severity
+   - Optional improvements
+
+6. Recommend fixes
+   For each issue, give:
+   - What is wrong
+   - Why it matters
+   - Exact files involved
+   - Recommended action:
+     keep, merge, archive, delete, rename, rewrite, or move
+   - Risk level
+   - Verification step
+
+7. Verification pass
+   - Re-check all proposed destructive actions.
+   - Do not recommend deleting anything unless replacement or irrelevance is clear.
+   - Mark uncertain deletions as “archive first,” not “delete.”
+
+Final output:
+A grouped, safe, actionable cleanup plan.
+```
+
+---
+
+## Gap-Fills Needed to Make It Production-Grade
+
+### [GAP-FILL] Require a Non-Destructive First Pass
+
+Claude should not immediately modify `.claude`.
+
+Add this rule:
+
+```text
+First run must be read-only.
+Produce an audit report only.
+No file edits, moves, deletions, or rewrites.
+```
+
+Then a second workflow can apply fixes.
+
+---
+
+### [GAP-FILL] Add “Archive Before Delete”
+
+Use:
+
+```text
+.claude_archive/YYYY-MM-DD/
+```
+
+Any asset marked stale should first be moved to archive, not deleted.
+
+---
+
+### [GAP-FILL] Add Dependency Check
+
+Before removing any skill/hook/command:
+
+```text
+Search all CLAUDE.md, commands, hooks, scripts, and project docs
+for references to that asset name.
+```
+
+This avoids breaking an implicit workflow.
+
+---
+
+# The 6-Part Framework Behind All Three
+
+The transcript mentions a “6-part framework” but does not reveal it fully. Here is the likely reusable structure.
+
+Marked as reconstruction:
+
+## [GAP-FILL] General Dynamic Workflow Template
+
+```text
+1. Define objective
+   What decision or artifact should this workflow produce?
+
+2. Define corpus
+   What files, logs, posts, docs, repos, folders, or APIs should be inspected?
+
+3. Fan out analysis
+   Assign many agents to independent slices of the corpus.
+
+4. Normalize findings
+   Convert outputs into a common schema:
+   claim, evidence, confidence, source, recommendation.
+
+5. Verify / adversarial pass
+   Separate agents challenge the findings.
+   Unsupported findings are cut or downgraded.
+
+6. Synthesize final artifact
+   Produce a report, checklist, prompt pack, skill, command, HTML page, or fix list.
+```
+
+This is the real transferable pattern.
+
+---
+
+# Best Way for You to Replicate This
+
+Given your goal of building deployable AI workflows, I would turn these into **three reusable Claude Code skills**:
+
+```text
+.claude/skills/
+├── model-migration/
+│   ├── SKILL.md
+│   ├── prompt.md
+│   ├── output_schema.md
+│   └── verification_checklist.md
+│
+├── fact-checked-research/
+│   ├── SKILL.md
+│   ├── prompt.md
+│   ├── claim_ledger_schema.md
+│   └── source_quality_rubric.md
+│
+└── claude-setup-audit/
+    ├── SKILL.md
+    ├── prompt.md
+    ├── audit_schema.md
+    └── safe_cleanup_policy.md
+```
+
+The key is to make **verification a first-class artifact**, not an afterthought.
+
+---
+
+# My Recommended Build Order
+
+## 1. Start with Setup Audit
+
+This gives immediate value because it cleans your Claude Code environment before you build more workflows.
+
+```text
+First deliverable:
+claude-setup-audit/SKILL.md
+```
+
+## 2. Build Fact-Checked Research Next
+
+This becomes your general-purpose “trustworthy research machine” for AI trends, model releases, agent frameworks, and investment-adjacent research.
+
+```text
+Second deliverable:
+fact-checked-research/SKILL.md
+```
+
+## 3. Build Model Migration Last
+
+This is powerful but depends on having enough structured Claude Code history and a clean setup.
+
+```text
+Third deliverable:
+model-migration/SKILL.md
+```
+
+---
+
+# Minimal Implementation Standard
+
+For every dynamic workflow you create, enforce this invariant:
+
+```text
+No final claim without:
+1. source,
+2. evidence,
+3. confidence,
+4. verification status,
+5. actionability.
+```
+
+A Claude workflow without that is just parallelized hallucination. A Claude workflow with that becomes a primitive research organization.
